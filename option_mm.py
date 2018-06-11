@@ -7,7 +7,11 @@ from scipy.misc import derivative
 def u(w):
 	return np.log(w)
 
+def v(w):
+	return -np.exp(-0.1*w)
+
 r, mu, sigma, s0 = 0.08, 0.15, 0.3, 50
+np.random.seed(101)
 st = np.random.lognormal(np.log(s0)+(mu-sigma*sigma/2), sigma, 10000)
 fl = np.floor(np.min(st)/5)*5
 cl = np.ceil(np.max(st)/5)*5
@@ -30,10 +34,10 @@ for k in K:
 	call_discrete.append(np.exp(-r)*sum(np.maximum(K-k, 0)*hist/hist.sum()))
 	put_discrete.append(np.exp(-r)*sum(np.maximum(k-K, 0)*hist/hist.sum()))
 
-w = [5000]*K.shape[0]
+w = [10000]*K.shape[0]
 subjective = [1.0/K.shape[0]]*K.shape[0]
 it = 0
-while it <= 1000:
+while it <= 2000:
 	call_mm = []
 	put_mm = []
 	p_i = []
@@ -74,3 +78,6 @@ while it <= 1000:
 	w = w + call_mm*np.sign(call_buy_sell) + put_mm*np.sign(put_buy_sell)-\
 		call_quant-put_quant
 	it = it+1
+np.set_printoptions(suppress=True, formatter={'float_kind':'{:0.4f}'.format})
+print('The sampled distribution is')
+print(1.0*hist/sum(hist))

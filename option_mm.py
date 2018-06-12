@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm, entropy
 from scipy.misc import derivative
+from scipy.optimize import fsolve
 
 def u(w):
 	return np.log(w)
@@ -10,6 +11,9 @@ def u(w):
 def v(w):
 	#return -np.exp(-0.1*w)
 	return 1.0/w
+
+def func(x, p_s, q, k):
+	return sum(p_s*np.array(u(x-q)))-k
 
 r, mu, sigma, s0 = 0.08, 0.15, 0.3, 50
 np.random.seed(101)
@@ -37,6 +41,7 @@ for k in K:
 
 w = [10000]*K.shape[0]
 subjective = [1.0/K.shape[0]]*K.shape[0]
+U = sum(subjective*np.array(u(w)))
 it = 0
 
 while it <= 2000:
@@ -49,6 +54,7 @@ while it <= 2000:
 		dw.append(derivative(u, w[i], dx=1e-6))
 	deno = sum(1.0/K.shape[0]*np.array(dw))
 	p_i = 1.0/K.shape[0]*np.array(dw)/deno
+	#cost = fsolve(func, 1000, )
 
 	#KL divergence
 	loss = entropy(1.0*hist/sum(hist), p_i)

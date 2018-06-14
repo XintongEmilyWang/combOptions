@@ -6,6 +6,8 @@ from scipy.misc import derivative
 from scipy.optimize import fsolve
 
 def u(w):
+	#return -np.exp(-0.1*np.array(w))
+	#return 1.0/np.array(w)
 	return np.log(w)
 
 def v(w):
@@ -40,7 +42,7 @@ for k in K:
 	put_discrete.append(sum(np.maximum(k-K, 0)*hist/hist.sum()))
 
 cost = 10000
-w = [10000] * K.shape[0]
+w = [cost] * K.shape[0]
 # the vector of all quantities of shares held by traders
 q = [0] * K.shape[0]
 subjective = [1.0 / K.shape[0]] * K.shape[0]
@@ -52,6 +54,7 @@ P = []
 it = 0
 while it < numIt:
 	w = np.array(cost) - q
+	assert(w.all() > 0), "wealth is zero at iteration {}".format(it)
 	dw = []
 	for i in range(0, K.shape[0]):
 		dw.append(derivative(u, w[i], dx=1e-6))
@@ -60,7 +63,7 @@ while it < numIt:
 	loss[it] = entropy(1.0*hist/sum(hist), p_i)
 	P.append(p_i)
 
-	if it % 1 == 0:
+	if it % 50 == 0:
 		print('The constant utility is {}'.format(sum(subjective*np.array(u(w)))))
 		print('For iteration {}, the loss is {}'.format(it, loss[it]))
 		print(p_i)

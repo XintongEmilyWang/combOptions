@@ -6,6 +6,7 @@ from scipy.misc import derivative
 from scipy.optimize import fsolve
 
 def u(w):
+	#return -np.exp(-0.1*w)
 	return np.log(w)
 
 def v(w):
@@ -75,7 +76,7 @@ while it <= 2000:
 		put_quant = put_quant + np.maximum(K[i]-K, 0)*np.sign(put_buy_sell[i])
 
 	if it%50==0:
-		print('The constant utility is {}'.format(sum(p_i*np.array(u(w)))))
+		print('The constant utility is {}'.format(sum(subjective*np.array(u(w)))))
 		print('For iteration {}, the loss is {}'.format(it, loss))
 		print(p_i)
 		# print(call_quant+put_quant)

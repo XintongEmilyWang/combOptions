@@ -47,7 +47,7 @@ w = [cost] * K.shape[0]
 q = [0] * K.shape[0]
 subjective = [1.0 / K.shape[0]] * K.shape[0]
 U = sum(subjective * np.array(u(w)))
-numIt = 1000
+numIt = 10000
 loss = [0] * numIt
 P = []
 
@@ -72,20 +72,20 @@ while it < numIt:
 	for i in range(0, K.shape[0]):
 		# call
 		call_mm_buy = fsolve(func, cost, args=(subjective, q+np.maximum(K-K[i], 0), U))-cost
-		if call_discrete[i] > np.absolute(call_mm_buy):
+		if np.absolute(call_discrete[i]-np.absolute(call_mm_buy))>0.001 and call_discrete[i] > np.absolute(call_mm_buy):
 			q = q+np.maximum(K-K[i], 0)
 			cost = cost+call_mm_buy
 		call_mm_sell = fsolve(func, cost, args=(subjective, q-np.maximum(K-K[i], 0), U))-cost
-		if call_discrete[i] < np.absolute(call_mm_sell):
+		if np.absolute(call_discrete[i]-np.absolute(call_mm_sell))>0.001 and call_discrete[i] < np.absolute(call_mm_sell):
 			q = q-np.maximum(K-K[i], 0)
 			cost = cost+call_mm_sell
 		# put
 		put_mm_buy = fsolve(func, cost, args=(subjective, q+np.maximum(K[i]-K, 0), U))-cost
-		if put_discrete[i] > np.absolute(put_mm_buy):
+		if np.absolute(put_discrete[i]-np.absolute(put_mm_buy))>0.001 and put_discrete[i] > np.absolute(put_mm_buy):
 			q = q+np.maximum(K[i]-K, 0)
 			cost = cost+put_mm_buy
 		put_mm_sell = fsolve(func, cost, args=(subjective, q-np.maximum(K[i]-K, 0), U))-cost	
-		if put_discrete[i] < np.absolute(put_mm_sell):
+		if np.absolute(put_discrete[i]-np.absolute(put_mm_sell))>0.001 and put_discrete[i] < np.absolute(put_mm_sell):
 			q = q-np.maximum(K[i]-K, 0)
 			cost = cost+put_mm_sell
 	it = it+1

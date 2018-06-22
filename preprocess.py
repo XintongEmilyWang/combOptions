@@ -23,6 +23,8 @@ date_strike_pairs = np.array(sorted(option_df['Expiration Date of the Option'].v
 dates = date_strike_pairs[:, 0]
 dates_strikes = cumsum(date_strike_pairs[:, 1])
 idx = 0
+K = []
+P = []
 for i in range(dates_strikes.shape[0]):
 	print('Recovering the probability distribution of {} on date {}'.format(stock, dates[i]))
 	c_p = np.array(option_df['C=Call, P=Put'].iloc[idx:dates_strikes[i]].value_counts())
@@ -35,7 +37,9 @@ for i in range(dates_strikes.shape[0]):
 
 	market_maker = constant_utility_mm.ConstantUtilityMM(c_strikes = c_strikes, \
 		c_bids = c_bids, c_asks = c_asks, p_strikes = p_strikes, p_bids = p_bids, p_asks = p_asks)
-	market_maker.mm()
+	k, p = market_maker.mm()
+	K.append(k)
+	P.append(p)
 	idx = dates_strikes[i]
 	pdb.set_trace()
 

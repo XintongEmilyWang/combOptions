@@ -31,7 +31,6 @@ class ConstantUtilityMM:
 		fl = min(min(self.c_strikes), min(self.p_strikes))
 		cl = max(max(self.c_strikes), max(self.p_strikes))
 		K = np.linspace(fl, cl, (cl-fl)/0.5+1)
-		pdb.set_trace()
 
 		cost = 1e5
 		w = [cost] * K.shape[0]
@@ -39,11 +38,10 @@ class ConstantUtilityMM:
 		q = [0] * K.shape[0]
 		subjective = [1.0 / K.shape[0]] * K.shape[0]
 		U = sum(subjective * np.array(self.u(w)))
-		numIt = 10000
 		P = []
 
 		it = 0
-		while it < numIt:
+		while len(P) < 2 or (P[-1] != P[-2]).any():
 			w = np.array(cost) - q
 			assert(w.all() > 0), "wealth is zero at iteration {}.".format(it)
 			dw = []
@@ -101,7 +99,7 @@ class ConstantUtilityMM:
 		# plt.plot(K, P[np.argmin(loss)], 'bx')
 		# fig2 = plt.figure()
 		# plt.plot(loss)
-		pdb.set_trace()
+		return K, P[-1]
 	
 
 

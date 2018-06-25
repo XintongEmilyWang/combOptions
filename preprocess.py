@@ -5,6 +5,7 @@ import numpy as np
 from numpy import cumsum
 import pandas as pd
 import constant_utility_mm
+import matplotlib.pyplot as plt
 
 # three components: option, underlying stock, dividend
 input_dir = sys.argv[1]

@@ -25,14 +25,25 @@ class ConstantUtilityMM:
 		return 1.0/w
 
 	def func(self, x, p_s, q, k):
+		#assert(all(x-q > 0)), "wealth falls negative."
 		return sum(p_s*np.array(self.u(x-q)))-k
+
+	def solve_implicit_C(self, cost, p_s, q, delta_q, k):
+		factor = 1
+		new_cost, d, ier, mesg = fsolve(self.func, cost, args=(p_s, q+delta_q, k), full_output=True)
+		# print(mesg)
+		while mesg != 'The solution converged.':
+			factor = factor * 0.1
+			delta_q = factor * delta_q
+			new_cost, d, ier, mesg = fsolve(self.func, cost, args=(p_s, q+delta_q, k), full_output=True)
+		return new_cost, delta_q, factor
 
 	def mm(self):
 		fl = min(min(self.c_strikes), min(self.p_strikes))
 		cl = max(max(self.c_strikes), max(self.p_strikes))
 		K = np.linspace(fl, cl, (cl-fl)/0.5+1)
 
-		cost = 1e5
+		cost = 1e4
 		w = [cost] * K.shape[0]
 		# the vector of all quantities of shares held by traders
 		q = [0] * K.shape[0]
@@ -43,7 +54,7 @@ class ConstantUtilityMM:
 		it = 0
 		while len(P) < 2 or (P[-1] != P[-2]).any():
 			w = np.array(cost) - q
-			assert(w.all() > 0), "wealth is zero at iteration {}.".format(it)
+			assert(all(w > 0)), "wealth is negative at iteration {}.".format(it)
 			dw = []
 			for i in range(0, K.shape[0]):
 				dw.append(derivative(self.u, w[i], dx=1e-6))
@@ -51,7 +62,7 @@ class ConstantUtilityMM:
 			p_i = subjective*np.array(dw)/deno
 			P.append(p_i)
 
-			if it % 50 == 0:
+			if it % 100 == 0:
 				print('The constant utility is {}'.format(sum(subjective*np.array(self.u(w)))))
 				print('The minimum wealth at iteration {} is {}'.format(it, min(w)))
 				print(p_i)
@@ -64,14 +75,21 @@ class ConstantUtilityMM:
 				if K[i] == self.c_strikes[j]:
 					call_bid = self.c_bids[j]
 					call_ask = self.c_asks[j]
-					call_mm_buy = fsolve(self.func, cost, args=(subjective, q+np.maximum(K-K[i], 0), U))-cost
-					if np.sign(call_mm_buy)>=0 and np.absolute(np.absolute(call_mm_buy)-call_bid)>0.01 and np.absolute(call_mm_buy) < call_bid:
-						q = q+np.maximum(K-K[i], 0)
-						cost = cost+call_mm_buy
-					call_mm_sell = fsolve(self.func, cost, args=(subjective, q-np.maximum(K-K[i], 0), U))-cost
-					if np.sign(call_mm_sell)<=0 and np.absolute(np.absolute(call_mm_sell)-call_ask)>0.01 and np.absolute(call_mm_sell) > call_ask:
-						q = q-np.maximum(K-K[i], 0)
-						cost = cost+call_mm_sell
+					new_cost, q_delta, factor = self.solve_implicit_C(cost, subjective, q, np.maximum(K-K[i], 0), U)
+					call_mm_buy = new_cost - cost
+					if np.sign(call_mm_buy) >= 0 and np.absolute(np.absolute(call_mm_buy)-call_bid*factor) > 0.01 \
+					and np.absolute(call_mm_buy) < call_bid*factor:
+						q = q + q_delta
+						cost = new_cost
+					# pdb.set_trace()
+					new_cost, q_delta, factor = self.solve_implicit_C(cost, subjective, q, -np.maximum(K-K[i], 0), U)
+					call_mm_sell = new_cost - cost
+					# pdb.set_trace()
+					if np.sign(call_mm_sell) <= 0 and np.absolute(np.absolute(call_mm_sell)-call_ask*factor) > 0.01 \
+					and np.absolute(call_mm_sell) > call_ask*factor:
+						q = q + q_delta
+						cost = new_cost
+					# pdb.set_trace()
 						# the constraint of neighbor strike prices is not helpful	
 						# 	call_bid = self.c_asks[j]
 						# 	call_ask = self.c_bids[j-1]
@@ -80,14 +98,20 @@ class ConstantUtilityMM:
 				if K[i] == self.p_strikes[k]:
 					put_bid = self.p_bids[k]
 					put_ask = self.p_asks[k]
-					put_mm_buy = fsolve(self.func, cost, args=(subjective, q+np.maximum(K[i]-K, 0), U))-cost
-					if np.sign(put_mm_buy)>=0 and np.absolute(np.absolute(put_mm_buy)-put_bid)>0.01 and np.absolute(put_mm_buy) < put_bid:
-						q = q+np.maximum(K[i]-K, 0)
-						cost = cost+put_mm_buy
-					put_mm_sell = fsolve(self.func, cost, args=(subjective, q-np.maximum(K[i]-K, 0), U))-cost	
-					if np.sign(put_mm_sell)<=0 and np.absolute(np.absolute(put_mm_sell)-put_ask)>0.01 and np.absolute(put_mm_sell) > put_ask:
-						q = q-np.maximum(K[i]-K, 0)
-						cost = cost+put_mm_sell
+					new_cost, q_delta, factor = self.solve_implicit_C(cost, subjective, q, np.maximum(K[i]-K, 0), U)
+					put_mm_buy = new_cost - cost
+					if np.sign(put_mm_buy) >= 0 and np.absolute(np.absolute(put_mm_buy)-put_bid*factor) > 0.01 \
+					and np.absolute(put_mm_buy) < put_bid*factor:
+						q = q + q_delta
+						cost = new_cost
+					# pdb.set_trace()
+					new_cost, q_delta, factor = self.solve_implicit_C(cost, subjective, q, -np.maximum(K[i]-K, 0), U)
+					put_mm_sell = new_cost - cost
+					if np.sign(put_mm_sell) <= 0 and np.absolute(np.absolute(put_mm_sell)-put_ask*factor) > 0.01 \
+					and np.absolute(put_mm_sell) > put_ask*factor:
+						q = q + q_delta
+						cost = new_cost
+					# pdb.set_trace()
 						# 	put_bid = self.p_asks[k-1]
 						# 	put_ask = self.p_bids[k]
 			it = it+1

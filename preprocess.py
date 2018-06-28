@@ -26,6 +26,7 @@ datetime.datetime.strptime(date, '%Y%m%d')) / np.timedelta64(1, 'D')).astype(int
 assert(np.array(option_df['AM Settlement Flag'].astype(int)).all()==0), "options on the security expire at the market open of the last trading day"
 option_df.sort_values(by = ['Expiration Date of the Option', 'C=Call, P=Put', \
 	'Strike Price of the Option Times 1000'], inplace = True)
+
 # trim the strike range
 strike_l, h = stats.t.interval(0.68, len(option_df['Strike Price of the Option Times 1000'])-1, loc=np.mean(option_df['Strike Price of the Option Times 1000']), \
 	scale=np.std(option_df['Strike Price of the Option Times 1000']))
@@ -40,12 +41,12 @@ option_df = option_df[(option_df['Strike Price of the Option Times 1000']>=strik
 date_strike_pairs = np.array(sorted(option_df['Expiration Date of the Option'].value_counts().items()))
 dates = date_strike_pairs[:, 0]
 
-# using the put-call parity to tighten up the call bids and asks
+print('Preprocessing: using put-call parity to tighten up the call bids and asks...')
 stock_price = 85400/1000
 r = 0.02
 for d in dates:
-	# print(d)
-	# pdb.set_trace()
+	#print(d)
+	#pdb.set_trace()
 	for k in option_df[(option_df['Expiration Date of the Option']==d) & (option_df['C=Call, P=Put']=='C')]['Strike Price of the Option Times 1000']:
 		# print(k)
 		filt = (option_df['Expiration Date of the Option']==d) & (option_df['Strike Price of the Option Times 1000']==k)
@@ -73,12 +74,12 @@ for d in dates:
 			option_df.loc[option_df[filt & (option_df['C=Call, P=Put']=='C')].index,'Highest Closing Bid Across All Exchanges'] = np.floor(((call_bid+call_ask)/2)*100)/100
 			option_df.loc[option_df[filt & (option_df['C=Call, P=Put']=='C')].index,'Lowest  Closing Ask Across All Exchanges'] = np.ceil(((call_bid+call_ask)/2)*100)/100
 			# pdb.set_trace()
-	# pdb.set_trace()
+	#pdb.set_trace()
 
-# drop all the puts
+print('Preprocessing: dropping the corresponding puts...')
 option_df = option_df[option_df['C=Call, P=Put'] == 'C']
 
-# For a fixed expiration date, tighten up bids and asks across strike prices
+print('Preprocessing: for a fixed expiration date, tightening up bids and asks across strike prices...')
 for d in dates:
 	filt = option_df['Expiration Date of the Option']==d
 	for i in range(0, len(option_df[filt])):
@@ -99,7 +100,7 @@ for d in dates:
 			#pdb.set_trace()
 	#pdb.set_trace()
 
-# For a fixed strike price, tighten up bids and asks across expiration dates
+print('Preprocessing: for a fixed strike price, tightening up bids and asks across expiration dates...')
 for k in strikes:
 	filt = option_df['Strike Price of the Option Times 1000']==k
 	for i in range(0, len(option_df[filt])):
@@ -125,6 +126,10 @@ dates_strikes = cumsum(date_strike_pairs[:, 1])
 
 idx = 0
 P = []
+cmap = plt.get_cmap('rainbow')
+colors = [cmap(i) for i in np.linspace(0, 1, dates_strikes.shape[0])]
+markers = ['o','v','d','^','<','D','>','1','2','*','3','4','8','s','p','P','h','H','+','x','X','D','|','_']
+pdb.set_trace()
 for i in range(dates_strikes.shape[0]):
 	print('Recovering the probability distribution of {} on date {}'.format(stock, dates[i]))
 	print(option_df[['Strike Price of the Option Times 1000','Highest Closing Bid Across All Exchanges', 'Lowest  Closing Ask Across All Exchanges']].iloc[idx:dates_strikes[i]])
@@ -137,7 +142,7 @@ for i in range(dates_strikes.shape[0]):
 	p = np.concatenate([[np.nan]*np.where(strikes==k[0]*1000)[0][0], p, [np.nan]*(np.where(strikes==strikes[-1])[0][0] - np.where(strikes==k[-1]*1000)[0][0])])
 	P.append(p)
 	idx = dates_strikes[i]
-	plt.plot(strikes, p, 'bx')
+	plt.plot(strikes, p, color=colors[i], marker = markers[i], linestyle='None')
 	ymd = datetime.datetime.strptime(date, '%Y%m%d')+datetime.timedelta(days=dates[i].astype(float))
 	plt.title('Date {} with an expected price at {}'.format(ymd.strftime("%Y-%m-%d"), round(expected_price*100)/100))
 	pdb.set_trace()

@@ -68,22 +68,16 @@ class ConstantUtilityMM:
 					call_ask = self.c_asks[j]
 					new_cost, q_delta, factor = self.solve_implicit_C(cost, subjective, q, np.maximum(K-K[i], 0), U)
 					call_mm_buy = new_cost - cost
-					if np.sign(call_mm_buy) >= 0 and np.absolute(np.absolute(call_mm_buy)-call_bid*factor) > 0.01 \
-					and np.absolute(call_mm_buy) < call_bid*factor:
+					if np.sign(call_mm_buy)>=0 and np.absolute(np.absolute(call_mm_buy)-call_bid*factor)>=0.01 \
+						and np.absolute(call_mm_buy) < call_bid*factor:
 						q = q + q_delta
 						cost = new_cost
-					# pdb.set_trace()
 					new_cost, q_delta, factor = self.solve_implicit_C(cost, subjective, q, -np.maximum(K-K[i], 0), U)
 					call_mm_sell = new_cost - cost
-					# pdb.set_trace()
-					if np.sign(call_mm_sell) <= 0 and np.absolute(np.absolute(call_mm_sell)-call_ask*factor) > 0.01 \
-					and np.absolute(call_mm_sell) > call_ask*factor:
+					if np.sign(call_mm_sell)<=0 and np.absolute(np.absolute(call_mm_sell)-call_ask*factor)>=0.01 \
+						and np.absolute(call_mm_sell) > call_ask*factor:
 						q = q + q_delta
 						cost = new_cost
-					# pdb.set_trace()
-						# the constraint of neighbor strike prices is not helpful	
-						# 	call_bid = self.c_asks[j]
-						# 	call_ask = self.c_bids[j-1]
 			it = it+1
 		return K, P[-1]
 	

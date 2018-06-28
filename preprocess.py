@@ -34,9 +34,8 @@ strike_l = np.ceil(strike_l/500)*500
 l, strike_h = stats.t.interval(0.95, len(option_df['Strike Price of the Option Times 1000'])-1, loc=np.mean(option_df['Strike Price of the Option Times 1000']), \
 	scale=np.std(option_df['Strike Price of the Option Times 1000']))
 strike_h = np.floor(strike_h/500)*500
-strikes = np.linspace(strike_l, strike_h, (strike_h-strike_l)/500+1)
+strikes = np.linspace(strike_l, strike_h+5000, (strike_h+5000-strike_l)/500+1)
 option_df = option_df[(option_df['Strike Price of the Option Times 1000']>=strike_l) & (option_df['Strike Price of the Option Times 1000']<=strike_h)]
-
 # expiration date range
 date_strike_pairs = np.array(sorted(option_df['Expiration Date of the Option'].value_counts().items()))
 dates = date_strike_pairs[:, 0]
@@ -143,9 +142,10 @@ for i in range(dates_strikes.shape[0]-3):
 	ymd = datetime.datetime.strptime(date, '%Y%m%d')+datetime.timedelta(days=dates[i].astype(float))
 	print('Recovering the probability distribution of {} on date {}...'.format(stock, ymd.strftime("%Y-%m-%d")))
 	print(option_df[['Strike Price of the Option Times 1000','Highest Closing Bid Across All Exchanges', 'Lowest  Closing Ask Across All Exchanges']].iloc[idx:dates_strikes[i]])
-	c_strikes = np.array(option_df['Strike Price of the Option Times 1000'].iloc[idx:dates_strikes[i]])
-	c_bids = np.array(option_df['Highest Closing Bid Across All Exchanges'].iloc[idx:dates_strikes[i]])
-	c_asks = np.array(option_df['Lowest  Closing Ask Across All Exchanges'].iloc[idx:dates_strikes[i]])
+	c_strikes = np.concatenate([np.array(option_df['Strike Price of the Option Times 1000'].iloc[idx:dates_strikes[i]]), \
+		np.array(option_df['Strike Price of the Option Times 1000'].iloc[dates_strikes[i]-1:dates_strikes[i]]+5000)])
+	c_bids = np.concatenate([np.array(option_df['Highest Closing Bid Across All Exchanges'].iloc[idx:dates_strikes[i]]), [0]])
+	c_asks = np.concatenate([np.array(option_df['Lowest  Closing Ask Across All Exchanges'].iloc[idx:dates_strikes[i]]), [0]])
 	market_maker = constant_utility_mm.ConstantUtilityMM(c_strikes = c_strikes, c_bids = c_bids, c_asks = c_asks)
 	k, p = market_maker.mm()
 	expected_price = sum(k*p)

@@ -11,13 +11,8 @@ class ConstantUtilityMM:
 		self.c_strikes = c_strikes/1000
 		self.c_bids = c_bids
 		self.c_asks = c_asks
-		# self.p_strikes = p_strikes/1000
-		# self.p_bids = p_bids
-		# self.p_asks = p_asks
 
 	def u(self, w):
-		#return -np.exp(-0.1*np.array(w))
-		#return 1.0/np.array(w)
 		return np.log(w)
 
 	def v(self, w):
@@ -31,7 +26,6 @@ class ConstantUtilityMM:
 	def solve_implicit_C(self, cost, p_s, q, delta_q, k):
 		factor = 1
 		new_cost, d, ier, mesg = fsolve(self.func, cost, args=(p_s, q+delta_q, k), full_output=True)
-		# print(mesg)
 		while mesg != 'The solution converged.':
 			factor = factor * 0.1
 			delta_q = factor * delta_q
@@ -62,15 +56,12 @@ class ConstantUtilityMM:
 			p_i = subjective*np.array(dw)/deno
 			P.append(p_i)
 
-			if it % 100 == 0:
+			if it % 500 == 0:
 				print('The constant utility is {}'.format(sum(subjective*np.array(self.u(w)))))
 				print('The minimum wealth at iteration {} is {}'.format(it, min(w)))
 				print(p_i)
 
-			# assert(self.c_strikes.shape[0] == self.p_strikes.shape[0]), "put call strike sizes are different."
-
 			for i in range(0, K.shape[0]):
-				# call
 				j = bisect.bisect_left(self.c_strikes, K[i], lo=0, hi=len(self.c_strikes))
 				if K[i] == self.c_strikes[j]:
 					call_bid = self.c_bids[j]
@@ -93,36 +84,7 @@ class ConstantUtilityMM:
 						# the constraint of neighbor strike prices is not helpful	
 						# 	call_bid = self.c_asks[j]
 						# 	call_ask = self.c_bids[j-1]
-				# put
-				# k = bisect.bisect_left(self.p_strikes, K[i], lo=0, hi=len(self.p_strikes))
-				# if K[i] == self.p_strikes[k]:
-				# 	put_bid = self.p_bids[k]
-				# 	put_ask = self.p_asks[k]
-				# 	new_cost, q_delta, factor = self.solve_implicit_C(cost, subjective, q, np.maximum(K[i]-K, 0), U)
-				# 	put_mm_buy = new_cost - cost
-				# 	if np.sign(put_mm_buy) >= 0 and np.absolute(np.absolute(put_mm_buy)-put_bid*factor) > 0.01 \
-				# 	and np.absolute(put_mm_buy) < put_bid*factor:
-				# 		q = q + q_delta
-				# 		cost = new_cost
-				# 	# pdb.set_trace()
-				# 	new_cost, q_delta, factor = self.solve_implicit_C(cost, subjective, q, -np.maximum(K[i]-K, 0), U)
-				# 	put_mm_sell = new_cost - cost
-				# 	if np.sign(put_mm_sell) <= 0 and np.absolute(np.absolute(put_mm_sell)-put_ask*factor) > 0.01 \
-				# 	and np.absolute(put_mm_sell) > put_ask*factor:
-				# 		q = q + q_delta
-				# 		cost = new_cost
-					# pdb.set_trace()
-						# 	put_bid = self.p_asks[k-1]
-						# 	put_ask = self.p_bids[k]
 			it = it+1
-
-		# np.set_printoptions(suppress=True, formatter={'float_kind':'{:0.4f}'.format})
-		# print('The minimum loss is {}, reached at {} iteration.'.format(np.min(loss), np.argmin(loss)))
-		# fig1 = plt.figure()
-		# plt.plot(K, 1.0*hist/sum(hist), 'ro')
-		# plt.plot(K, P[np.argmin(loss)], 'bx')
-		# fig2 = plt.figure()
-		# plt.plot(loss)
 		return K, P[-1]
 	
 

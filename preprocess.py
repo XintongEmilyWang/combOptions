@@ -45,10 +45,12 @@ print('Preprocessing: using put-call parity to tighten up the call bids and asks
 stock_price = 85400/1000
 r = 0.02
 for d in dates:
-	#print(d)
-	#pdb.set_trace()
+	# print(d)
+	# plt.plot(option_df[(option_df['Expiration Date of the Option']==d) & (option_df['C=Call, P=Put']=='C')]['Strike Price of the Option Times 1000'], \
+	# 	option_df[(option_df['Expiration Date of the Option']==d) & (option_df['C=Call, P=Put']=='C')]['Highest Closing Bid Across All Exchanges'], 'b.')
+	# plt.plot(option_df[(option_df['Expiration Date of the Option']==d) & (option_df['C=Call, P=Put']=='C')]['Strike Price of the Option Times 1000'], \
+	# 	option_df[(option_df['Expiration Date of the Option']==d) & (option_df['C=Call, P=Put']=='C')]['Lowest  Closing Ask Across All Exchanges'], 'r.')
 	for k in option_df[(option_df['Expiration Date of the Option']==d) & (option_df['C=Call, P=Put']=='C')]['Strike Price of the Option Times 1000']:
-		# print(k)
 		filt = (option_df['Expiration Date of the Option']==d) & (option_df['Strike Price of the Option Times 1000']==k)
 		call_bid = option_df[filt & (option_df['C=Call, P=Put']=='C')]['Highest Closing Bid Across All Exchanges'].values
 		call_ask = option_df[filt & (option_df['C=Call, P=Put']=='C')]['Lowest  Closing Ask Across All Exchanges'].values
@@ -57,81 +59,89 @@ for d in dates:
 		k = k/1000
 		t = d%7 + np.floor(d/7)*5
 		if call_bid < stock_price-k+put_bid: 
-			# pdb.set_trace()
 			option_df.loc[option_df[filt & (option_df['C=Call, P=Put']=='C')].index,'Highest Closing Bid Across All Exchanges'] = \
 			np.floor((stock_price-k+put_bid)*100)/100
-			# pdb.set_trace()
 		if call_ask > stock_price-k*np.exp(-r*t/252)+put_ask:
-			# pdb.set_trace()
 			option_df.loc[option_df[filt & (option_df['C=Call, P=Put']=='C')].index,'Lowest  Closing Ask Across All Exchanges'] = \
 			np.ceil((stock_price-k*np.exp(-r*t/252)+put_ask)*100)/100
-			# pdb.set_trace()
 		# check whether bid is larger than ask
 		call_bid = option_df[filt & (option_df['C=Call, P=Put']=='C')]['Highest Closing Bid Across All Exchanges'].values
 		call_ask = option_df[filt & (option_df['C=Call, P=Put']=='C')]['Lowest  Closing Ask Across All Exchanges'].values
 		if call_bid > call_ask:
-			# pdb.set_trace()
 			option_df.loc[option_df[filt & (option_df['C=Call, P=Put']=='C')].index,'Highest Closing Bid Across All Exchanges'] = np.floor(((call_bid+call_ask)/2)*100)/100
 			option_df.loc[option_df[filt & (option_df['C=Call, P=Put']=='C')].index,'Lowest  Closing Ask Across All Exchanges'] = np.ceil(((call_bid+call_ask)/2)*100)/100
-			# pdb.set_trace()
-	#pdb.set_trace()
+	# plt.plot(option_df[(option_df['Expiration Date of the Option']==d) & (option_df['C=Call, P=Put']=='C')]['Strike Price of the Option Times 1000'], \
+	# 	option_df[(option_df['Expiration Date of the Option']==d) & (option_df['C=Call, P=Put']=='C')]['Highest Closing Bid Across All Exchanges'], 'gx')
+	# plt.plot(option_df[(option_df['Expiration Date of the Option']==d) & (option_df['C=Call, P=Put']=='C')]['Strike Price of the Option Times 1000'], \
+	# 	option_df[(option_df['Expiration Date of the Option']==d) & (option_df['C=Call, P=Put']=='C')]['Lowest  Closing Ask Across All Exchanges'], 'yx')
+	# pdb.set_trace()
 
 print('Preprocessing: dropping the corresponding puts...')
 option_df = option_df[option_df['C=Call, P=Put'] == 'C']
 
-print('Preprocessing: for a fixed expiration date, tightening up bids and asks across strike prices...')
-for d in dates:
-	filt = option_df['Expiration Date of the Option']==d
-	for i in range(0, len(option_df[filt])):
-		strike = option_df[filt]['Strike Price of the Option Times 1000'].iloc[i]
-		best_bid = option_df[filt]['Highest Closing Bid Across All Exchanges'].iloc[i]
-		best_ask = option_df[filt]['Lowest  Closing Ask Across All Exchanges'].iloc[i]
-		bid_constraint = max(option_df[filt & (option_df['Strike Price of the Option Times 1000']>=strike)]['Highest Closing Bid Across All Exchanges'])
-		ask_constraint = min(option_df[filt & (option_df['Strike Price of the Option Times 1000']<=strike)]['Lowest  Closing Ask Across All Exchanges'])
-		if best_bid < bid_constraint:
-			# push the best bid up
-			#pdb.set_trace()
-			option_df.loc[option_df[filt & (option_df['Strike Price of the Option Times 1000']==strike)].index, 'Highest Closing Bid Across All Exchanges'] = bid_constraint
-			#pdb.set_trace()
-		if best_ask > ask_constraint:
-			# push the best ask down
-			#pdb.set_trace()
-			option_df.loc[option_df[filt & (option_df['Strike Price of the Option Times 1000']==strike)].index, 'Lowest  Closing Ask Across All Exchanges'] = ask_constraint
-			#pdb.set_trace()
-	#pdb.set_trace()
+cnt = 0
+count = 0
+rnd = 1
+while (rnd==1) | (cnt+count!=0):
+	print('Round {}...'.format(rnd))
+	cnt = 0
+	count = 0
+	print('Preprocessing: for a fixed expiration date, tightening up bids and asks across strike prices...')
+	for d in dates:
+		filt = option_df['Expiration Date of the Option']==d
+		for i in range(0, len(option_df[filt])):
+			strike = option_df[filt]['Strike Price of the Option Times 1000'].iloc[i]
+			best_bid = option_df[filt]['Highest Closing Bid Across All Exchanges'].iloc[i]
+			best_ask = option_df[filt]['Lowest  Closing Ask Across All Exchanges'].iloc[i]
+			bid_constraint = max(option_df[filt & (option_df['Strike Price of the Option Times 1000']>=strike)]['Highest Closing Bid Across All Exchanges'])
+			ask_constraint = min(option_df[filt & (option_df['Strike Price of the Option Times 1000']<=strike)]['Lowest  Closing Ask Across All Exchanges'])
+			if best_bid < bid_constraint:
+				# pdb.set_trace()
+				option_df.loc[option_df[filt & (option_df['Strike Price of the Option Times 1000']==strike)].index, 'Highest Closing Bid Across All Exchanges'] = bid_constraint
+				cnt = cnt + 1
+				# pdb.set_trace()
+			if best_ask > ask_constraint:
+				# pdb.set_trace()
+				option_df.loc[option_df[filt & (option_df['Strike Price of the Option Times 1000']==strike)].index, 'Lowest  Closing Ask Across All Exchanges'] = ask_constraint
+				cnt = cnt + 1
+				# pdb.set_trace()
+			assert(option_df[filt]['Highest Closing Bid Across All Exchanges'].iloc[i] <= option_df[filt]['Lowest  Closing Ask Across All Exchanges'].iloc[i]), \
+				"bid is larger than ask!"
+	print('{} values are corrected based on bids and asks across strikes.'.format(cnt))
 
-print('Preprocessing: for a fixed strike price, tightening up bids and asks across expiration dates...')
-for k in strikes:
-	filt = option_df['Strike Price of the Option Times 1000']==k
-	for i in range(0, len(option_df[filt])):
-		day = option_df[filt]['Expiration Date of the Option'].iloc[i]
-		best_bid = option_df[filt]['Highest Closing Bid Across All Exchanges'].iloc[i]
-		best_ask = option_df[filt]['Lowest  Closing Ask Across All Exchanges'].iloc[i]
-		bid_constraint = max(option_df[filt & (option_df['Expiration Date of the Option']<=day)]['Highest Closing Bid Across All Exchanges'])
-		ask_constraint = min(option_df[filt & (option_df['Expiration Date of the Option']>=day)]['Lowest  Closing Ask Across All Exchanges'])
-		if best_bid < bid_constraint:
-			# push the best bid up
-			#pdb.set_trace()
-			option_df.loc[option_df[filt & (option_df['Expiration Date of the Option']==day)].index, 'Highest Closing Bid Across All Exchanges'] = bid_constraint
-			#pdb.set_trace()
-		if best_ask > ask_constraint:
-			# push the best ask down
-			#pdb.set_trace()
-			option_df.loc[option_df[filt & (option_df['Expiration Date of the Option']==day)].index, 'Lowest  Closing Ask Across All Exchanges'] = ask_constraint
-			#pdb.set_trace()
+	print('Preprocessing: for a fixed strike price, tightening up bids and asks across expiration dates...')
+	for k in strikes:
+		filt = option_df['Strike Price of the Option Times 1000']==k
+		for i in range(0, len(option_df[filt])):
+			day = option_df[filt]['Expiration Date of the Option'].iloc[i]
+			best_bid = option_df[filt]['Highest Closing Bid Across All Exchanges'].iloc[i]
+			best_ask = option_df[filt]['Lowest  Closing Ask Across All Exchanges'].iloc[i]
+			bid_constraint = max(option_df[filt & (option_df['Expiration Date of the Option']<=day)]['Highest Closing Bid Across All Exchanges'])
+			ask_constraint = min(option_df[filt & (option_df['Expiration Date of the Option']>=day)]['Lowest  Closing Ask Across All Exchanges'])
+			if best_bid < bid_constraint:
+				# pdb.set_trace()
+				option_df.loc[option_df[filt & (option_df['Expiration Date of the Option']==day)].index, 'Highest Closing Bid Across All Exchanges'] = bid_constraint
+				count = count + 1
+				# pdb.set_trace()
+			if best_ask > ask_constraint:
+				# pdb.set_trace()
+				option_df.loc[option_df[filt & (option_df['Expiration Date of the Option']==day)].index, 'Lowest  Closing Ask Across All Exchanges'] = ask_constraint
+				count = count + 1
+				# pdb.set_trace()
+			assert(option_df[filt]['Highest Closing Bid Across All Exchanges'].iloc[i] <= option_df[filt]['Lowest  Closing Ask Across All Exchanges'].iloc[i]), \
+				"bid is larger than ask!"
+	print('{} values are corrected based on bids and asks across expiration dates.'.format(count))
+	rnd = rnd + 1
 
+print('Preprocessing finished...')
 date_strike_pairs = np.array(sorted(option_df['Expiration Date of the Option'].value_counts().items()))
 dates = date_strike_pairs[:, 0]
 dates_strikes = cumsum(date_strike_pairs[:, 1])
-
 idx = 0
 P = []
-cmap = plt.get_cmap('rainbow')
-colors = [cmap(i) for i in np.linspace(0, 1, dates_strikes.shape[0])]
-markers = ['o','v','d','^','<','D','>','1','2','*','3','4','8','s','p','P','h','H','+','x','X','D','|','_']
-pdb.set_trace()
-for i in range(dates_strikes.shape[0]):
-	print('Recovering the probability distribution of {} on date {}'.format(stock, dates[i]))
+for i in range(dates_strikes.shape[0]-3):
+	ymd = datetime.datetime.strptime(date, '%Y%m%d')+datetime.timedelta(days=dates[i].astype(float))
+	print('Recovering the probability distribution of {} on date {}...'.format(stock, ymd.strftime("%Y-%m-%d")))
 	print(option_df[['Strike Price of the Option Times 1000','Highest Closing Bid Across All Exchanges', 'Lowest  Closing Ask Across All Exchanges']].iloc[idx:dates_strikes[i]])
 	c_strikes = np.array(option_df['Strike Price of the Option Times 1000'].iloc[idx:dates_strikes[i]])
 	c_bids = np.array(option_df['Highest Closing Bid Across All Exchanges'].iloc[idx:dates_strikes[i]])
@@ -142,10 +152,17 @@ for i in range(dates_strikes.shape[0]):
 	p = np.concatenate([[np.nan]*np.where(strikes==k[0]*1000)[0][0], p, [np.nan]*(np.where(strikes==strikes[-1])[0][0] - np.where(strikes==k[-1]*1000)[0][0])])
 	P.append(p)
 	idx = dates_strikes[i]
-	plt.plot(strikes, p, color=colors[i], marker = markers[i], linestyle='None')
-	ymd = datetime.datetime.strptime(date, '%Y%m%d')+datetime.timedelta(days=dates[i].astype(float))
+	plt.plot(strikes, p, 'bx:')
 	plt.title('Date {} with an expected price at {}'.format(ymd.strftime("%Y-%m-%d"), round(expected_price*100)/100))
 	pdb.set_trace()
 
-# plot the recovered probability distribution across time
+cmap = plt.get_cmap('rainbow')
+colors = [cmap(i) for i in np.linspace(0, 1, dates_strikes.shape[0])]
+# markers = ['o','v','d','^','D','1','2','*','3','4','8','s','p','P','h','H','+','x','X','D','|','_']
+print('Plotting the probability distribution across expiration dates...')
+for i in range(len(P)):
+	ymd = datetime.datetime.strptime(date, '%Y%m%d')+datetime.timedelta(days=dates[i].astype(float))
+	plt.plot(strikes, P[i], color=colors[i], marker = '*', linestyle=':', label=ymd.strftime("%Y-%m-%d"))
+plt.title('Probability distribution of {} across expiration dates'.format(stock))
+plt.legend()
 pdb.set_trace()

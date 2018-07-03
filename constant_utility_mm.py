@@ -53,7 +53,6 @@ class ConstantUtilityMM:
 		# dist = lognorm(s=sigma*np.sqrt(self.days_to_expiration), scale=np.exp(np.log(self.stock_price)+(mu-sigma*sigma/2)*self.days_to_expiration))
 		bins = np.linspace(K[0], K[-1]+0.5, (K[-1]+0.5-K[0])/0.5+1)
 		subjective = (dist.cdf(bins)[1:] - dist.cdf(K))/sum(dist.cdf(bins)[1:] - dist.cdf(K))	
-		pdb.set_trace()
 		# subjective = [1.0 / K.shape[0]] * K.shape[0]
 		# calculate constant utility
 		U = sum(subjective * np.array(self.u(w)))

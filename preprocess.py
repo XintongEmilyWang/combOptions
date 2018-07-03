@@ -34,7 +34,7 @@ strike_l = np.ceil(strike_l/500)*500
 l, strike_h = stats.t.interval(0.95, len(option_df['Strike Price of the Option Times 1000'])-1, loc=np.mean(option_df['Strike Price of the Option Times 1000']), \
 	scale=np.std(option_df['Strike Price of the Option Times 1000']))
 strike_h = np.floor(strike_h/500)*500
-strikes = np.linspace(strike_l, strike_h+5000, (strike_h+5000-strike_l)/500+1)
+strikes = np.linspace(strike_l, strike_h+10000, (strike_h+10000-strike_l)/500+1)
 option_df = option_df[(option_df['Strike Price of the Option Times 1000']>=strike_l) & (option_df['Strike Price of the Option Times 1000']<=strike_h)]
 # expiration date range
 date_strike_pairs = np.array(sorted(option_df['Expiration Date of the Option'].value_counts().items()))
@@ -143,10 +143,10 @@ for i in range(dates_strikes.shape[0]-3):
 	print('Recovering the probability distribution of {} on date {}...'.format(stock, ymd.strftime("%Y-%m-%d")))
 	print(option_df[['Strike Price of the Option Times 1000','Highest Closing Bid Across All Exchanges', 'Lowest  Closing Ask Across All Exchanges']].iloc[idx:dates_strikes[i]])
 	c_strikes = np.concatenate([np.array(option_df['Strike Price of the Option Times 1000'].iloc[idx:dates_strikes[i]]), \
-		np.array(option_df['Strike Price of the Option Times 1000'].iloc[dates_strikes[i]-1:dates_strikes[i]]+5000)])
+		np.array(option_df['Strike Price of the Option Times 1000'].iloc[dates_strikes[i]-1:dates_strikes[i]]+10000)])
 	c_bids = np.concatenate([np.array(option_df['Highest Closing Bid Across All Exchanges'].iloc[idx:dates_strikes[i]]), [0]])
 	c_asks = np.concatenate([np.array(option_df['Lowest  Closing Ask Across All Exchanges'].iloc[idx:dates_strikes[i]]), [0]])
-	market_maker = constant_utility_mm.ConstantUtilityMM(c_strikes = c_strikes, c_bids = c_bids, c_asks = c_asks)
+	market_maker = constant_utility_mm.ConstantUtilityMM(c_strikes = c_strikes, c_bids = c_bids, c_asks = c_asks, stock_price = stock_price, days_to_expiration = dates[i].astype(float))
 	k, p = market_maker.mm()
 	expected_price = sum(k*p)
 	p = np.concatenate([[np.nan]*np.where(strikes==k[0]*1000)[0][0], p, [np.nan]*(np.where(strikes==strikes[-1])[0][0] - np.where(strikes==k[-1]*1000)[0][0])])
@@ -162,7 +162,7 @@ colors = [cmap(i) for i in np.linspace(0, 1, dates_strikes.shape[0])]
 print('Plotting the probability distribution across expiration dates...')
 for i in range(len(P)):
 	ymd = datetime.datetime.strptime(date, '%Y%m%d')+datetime.timedelta(days=dates[i].astype(float))
-	plt.plot(strikes, P[i], color=colors[i], marker = '*', linestyle=':', label=ymd.strftime("%Y-%m-%d"))
+	plt.plot(strikes, P[i], color=colors[i], marker = '.', linestyle=':', label=ymd.strftime("%Y-%m-%d"))
 plt.title('Probability distribution of {} across expiration dates'.format(stock))
 plt.legend()
 pdb.set_trace()

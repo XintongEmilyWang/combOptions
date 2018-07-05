@@ -39,7 +39,7 @@ option_df = option_df[(option_df['Strike Price of the Option Times 1000']>=strik
 # expiration date range
 date_strike_pairs = np.array(sorted(option_df['Expiration Date of the Option'].value_counts().items()))
 dates = date_strike_pairs[:, 0]
-
+pdb.set_trace()
 print('Preprocessing: using put-call parity to tighten up the call bids and asks...')
 stock_price = 85400/1000
 r = 0.02

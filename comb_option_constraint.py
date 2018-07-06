@@ -17,7 +17,6 @@ st1 = sys.argv[3]
 st2 = sys.argv[4]
 expiration_date = int(sys.argv[5])
 comb_type = sys.argv[6]
-# comb_strike = int(sys.argv[7])
 
 opt1_stats_filename = os.path.join(input_dir, st1+"_"+price_date+".xlsx")
 opt1_df = pd.read_excel(opt1_stats_filename)
@@ -46,11 +45,13 @@ subtraction_h = max(opt1_df['Strike Price of the Option Times 1000']) - min(opt2
 if comb_type == 'C+':
 	ub = []
 	lb = []
+	print('Finding constraints for C({}+{}) on date {}...'.format(st1, st2, expiration_date))
 	for comb_strike in np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int):
 		upper = math.inf
 		lower = 0
 		upper_k = math.inf
 		lower_k = math.inf
+		lower_type = ''
 
 		opt1_df = opt1_df[opt1_df['Strike Price of the Option Times 1000'] <= comb_strike]
 		opt2_df = opt2_df[opt2_df['Strike Price of the Option Times 1000'] <= comb_strike]
@@ -73,36 +74,56 @@ if comb_type == 'C+':
 				if upper_temp < upper:
 					upper_k = k
 					upper = upper_temp
+					upper = float("{0:.2f}".format(upper))
 				lower_temp = float(opt2_df[filt2c]['Highest Closing Bid Across All Exchanges']) - float(opt1_df[filt1p]['Lowest  Closing Ask Across All Exchanges'])
 				if lower_temp > lower:
 					lower_k = k
-					lower = lower_temp
-				# upper = min(upper, float(opt1_df[filt1c]['Lowest  Closing Ask Across All Exchanges']) + float(opt2_df[filt2c]['Lowest  Closing Ask Across All Exchanges']))
-				# lower = max(lower, float(opt2_df[filt2c]['Highest Closing Bid Across All Exchanges']) - float(opt1_df[filt1p]['Lowest  Closing Ask Across All Exchanges']))
+					lower = float("{0:.2f}".format(lower_temp))
+					lower_type = 'P'
 			if any(filt2p):
 				lower_temp = float(opt1_df[filt1c]['Highest Closing Bid Across All Exchanges']) - float(opt2_df[filt2p]['Lowest  Closing Ask Across All Exchanges'])
 				if lower_temp > lower:
 					lower_k = k
-					lower = lower_temp
-				# lower = max(lower, float(opt1_df[filt1c]['Highest Closing Bid Across All Exchanges']) - float(opt2_df[filt2p]['Lowest  Closing Ask Across All Exchanges']))
+					lower = float("{0:.2f}".format(lower_temp))
+					lower_type = 'C'
 		ub.append(upper)
 		lb.append(lower)
-		print('The bound for {}({}, {}) at strike {} on date {} is [{}, {}]'.format(comb_type, st1, st2, comb_strike, expiration_date, lower, upper))
-		print('The upper bound {} comes from C({}, {}) at {} and C({}, {}) at {}'.format(upper, st1, upper_k, \
+		print('{} <= C({}+{}, {}) <= {}'.format(lower, st1, st2, comb_strike, upper))
+		if lower_type == '':
+			print('Lower bound 0: by definition of an option.')
+		elif lower_type == 'C':
+			print('Lower bound {}: C({}, {}) = {} - P({}, {}) = {}'.format(lower, st1, lower_k, \
+				float(opt1_df[(opt1_df['C=Call, P=Put'] == 'C') & (opt1_df['Strike Price of the Option Times 1000'] == lower_k)]['Highest Closing Bid Across All Exchanges']), \
+				st2, comb_strike-lower_k, \
+				float(opt2_df[(opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-lower_k)]['Lowest  Closing Ask Across All Exchanges'])))
+		else:
+			print('Lower bound {}: C({}, {}) = {} - P({}, {}) = {}'.format(lower, st2, comb_strike-lower_k, \
+				float(opt2_df[(opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-lower_k)]['Highest Closing Bid Across All Exchanges']), \
+				st1, lower_k, \
+				float(opt1_df[(opt1_df['C=Call, P=Put'] == 'P') & (opt1_df['Strike Price of the Option Times 1000'] == lower_k)]['Lowest  Closing Ask Across All Exchanges'])))
+		
+		print('Upper bound {}: C({}, {}) = {} + C({}, {}) = {}'.format(upper, st1, upper_k, \
 			float(opt1_df[(opt1_df['C=Call, P=Put'] == 'C') & (opt1_df['Strike Price of the Option Times 1000'] == upper_k)]['Lowest  Closing Ask Across All Exchanges']), \
 			st2, comb_strike-upper_k, \
 			float(opt2_df[(opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-upper_k)]['Lowest  Closing Ask Across All Exchanges'])))
+		print('')
+	
 	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int)/1000, ub, 'r.')
 	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int)/1000, lb, 'b.')
 	plt.title('Price bounds on call options of {} + {} across strikes.'.format(st1, st2))
-	pdb.set_trace()
+	plt.show()
 
 if comb_type == 'C-':
 	ub = []
 	lb = []
+	print('Finding constraints for C({}-{}) on date {}...'.format(st1, st2, expiration_date))
 	for comb_strike in np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int):
 		upper = math.inf
 		lower = 0
+		upper_k = math.inf
+		lower_k = math.inf
+		lower_type = ''
+
 		standard = (opt1_df['Strike Price of the Option Times 1000'] >= min(opt2_df['Strike Price of the Option Times 1000']) + comb_strike) & \
 			(opt1_df['Strike Price of the Option Times 1000'] <= max(opt2_df['Strike Price of the Option Times 1000']) + comb_strike)
 		for k in opt1_df[standard & (opt1_df['C=Call, P=Put'] == 'C')]['Strike Price of the Option Times 1000']:
@@ -111,34 +132,68 @@ if comb_type == 'C-':
 			filt2c = (opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == k-comb_strike)
 			filt2p = (opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == k-comb_strike)
 			if any(filt2c):
-				lower = max(lower, float(opt1_df[filt1c]['Highest Closing Bid Across All Exchanges']) - float(opt2_df[filt2c]['Lowest  Closing Ask Across All Exchanges']))
+				lower_temp = float(opt1_df[filt1c]['Highest Closing Bid Across All Exchanges']) - float(opt2_df[filt2c]['Lowest  Closing Ask Across All Exchanges'])
+				if lower_temp > lower:
+					lower = float("{0:.2f}".format(lower_temp))
+					lower_k = k
+					lower_type = 'C'
 			if any(filt2p):
-				upper = min(upper, float(opt1_df[filt1c]['Highest Closing Bid Across All Exchanges']) + float(opt2_df[filt2p]['Highest Closing Bid Across All Exchanges']))
-				lower = max(lower, float(opt2_df[filt2p]['Highest Closing Bid Across All Exchanges']) - float(opt1_df[filt1p]['Lowest  Closing Ask Across All Exchanges']))
+				upper_temp = float(opt1_df[filt1c]['Lowest  Closing Ask Across All Exchanges']) + float(opt2_df[filt2p]['Lowest  Closing Ask Across All Exchanges'])
+				if upper_temp < upper:
+					upper = float("{0:.2f}".format(upper_temp))
+					upper_k = k
+				lower_temp = float(opt2_df[filt2p]['Highest Closing Bid Across All Exchanges']) - float(opt1_df[filt1p]['Lowest  Closing Ask Across All Exchanges'])
+				if lower_temp > lower:
+					lower = float("{0:.2f}".format(lower_temp))
+					lower_k = k
+					lower_type = 'P'
 		ub.append(upper)
 		lb.append(lower)
-		print('The bound for {}({}, {}) at strike {} on date {} is [{}, {}]'.format(comb_type, st1, st2, comb_strike, expiration_date, lower, upper))
+		print('{} <= C({}-{}, {}) <= {}'.format(lower, st1, st2, comb_strike, upper))
+		if lower_type == '':
+			print('Lower bound 0: by definition of an option.')
+		elif lower_type == 'C':
+			print('Lower bound {}: C({}, {}) = {} - C({}, {}) = {}'.format(lower, st1, lower_k, \
+				float(opt1_df[(opt1_df['C=Call, P=Put'] == 'C') & (opt1_df['Strike Price of the Option Times 1000'] == lower_k)]['Highest Closing Bid Across All Exchanges']), \
+				st2, lower_k-comb_strike, \
+				float(opt2_df[(opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == lower_k-comb_strike)]['Lowest  Closing Ask Across All Exchanges'])))
+		else:
+			print('Lower bound {}: P({}, {}) = {} - P({}, {}) = {}'.format(lower, st2, lower_k-comb_strike, \
+				float(opt2_df[(opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-lower_k)]['Highest Closing Bid Across All Exchanges']), \
+				st1, lower_k, \
+				float(opt1_df[(opt1_df['C=Call, P=Put'] == 'P') & (opt1_df['Strike Price of the Option Times 1000'] == lower_k)]['Lowest  Closing Ask Across All Exchanges'])))
+		
+		print('Upper bound {}: C({}, {}) = {} + P({}, {}) = {}'.format(upper, st1, upper_k, \
+			float(opt1_df[(opt1_df['C=Call, P=Put'] == 'C') & (opt1_df['Strike Price of the Option Times 1000'] == upper_k)]['Lowest  Closing Ask Across All Exchanges']), \
+			st2, upper_k-comb_strike, \
+			float(opt2_df[(opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == upper_k-comb_strike)]['Lowest  Closing Ask Across All Exchanges'])))
+		print('')
+
 	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int)/1000, ub, 'r.')
 	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int)/1000, lb, 'b.')
 	plt.title('Price bounds on call options of {} - {} across strikes.'.format(st1, st2))
-	pdb.set_trace()
-	
+	plt.show()
 
 if comb_type == 'P+':
 	ub = []
 	lb = []
+	print('Finding constraints for P({}+{}) on date {}...'.format(st1, st2, expiration_date))
 	for comb_strike in np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int):
 		upper = math.inf
 		lower = 0
+		upper_k = math.inf
+		lower_k = math.inf
+		lower_type = ''
+		
 		opt1_df = opt1_df[opt1_df['Strike Price of the Option Times 1000'] <= comb_strike]
 		opt2_df = opt2_df[opt2_df['Strike Price of the Option Times 1000'] <= comb_strike]
 		# check each single put option with the comb_strike
 		f1 = (opt1_df['C=Call, P=Put'] == 'P') & (opt1_df['Strike Price of the Option Times 1000'] == comb_strike)
 		if any(f1):
-			upper = min(upper, float(opt1_df[f1]['Highest Closing Bid Across All Exchanges']))
+			upper = min(upper, float(opt1_df[f1]['Lowest  Closing Ask Across All Exchanges']))
 		f2 = (opt1_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike)
 		if any(f2):
-			upper = min(upper, float(opt2_df[f2]['Highest Closing Bid Across All Exchanges']))
+			upper = min(upper, float(opt2_df[f2]['Lowest  Closing Ask Across All Exchanges']))
 
 		for k in opt1_df[opt1_df['C=Call, P=Put'] == 'P']['Strike Price of the Option Times 1000']:
 			filt1c = (opt1_df['C=Call, P=Put'] == 'C') & (opt1_df['Strike Price of the Option Times 1000'] == k)
@@ -146,24 +201,63 @@ if comb_type == 'P+':
 			filt2c = (opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-k)
 			filt2p = (opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-k)
 			if any(filt2c):
-				lower = max(lower, float(opt1_df[filt1p]['Highest Closing Bid Across All Exchanges']) - float(opt2_df[filt2c]['Lowest  Closing Ask Across All Exchanges']))
+				lower_temp = float(opt1_df[filt1p]['Highest Closing Bid Across All Exchanges']) - float(opt2_df[filt2c]['Lowest  Closing Ask Across All Exchanges'])
+				if lower_temp > lower:
+					lower = float("{0:.2f}".format(lower_temp))
+					lower_k = k
+					lower_type = 'P'
 			if any(filt2p):
-				upper = min(upper, float(opt1_df[filt1p]['Highest Closing Bid Across All Exchanges']) + float(opt2_df[filt2p]['Highest Closing Bid Across All Exchanges']))	
-				lower = max(lower, float(opt2_df[filt2p]['Highest Closing Bid Across All Exchanges']) - float(opt1_df[filt1c]['Lowest  Closing Ask Across All Exchanges']))
+				upper_temp = float(opt1_df[filt1p]['Lowest  Closing Ask Across All Exchanges']) + float(opt2_df[filt2p]['Lowest  Closing Ask Across All Exchanges'])
+				if upper_temp < upper:
+					upper = float("{0:.2f}".format(upper_temp))
+					upper_k = k
+				lower_temp = float(opt2_df[filt2p]['Highest Closing Bid Across All Exchanges']) - float(opt1_df[filt1c]['Lowest  Closing Ask Across All Exchanges'])
+				if lower_temp > lower:
+					lower = float("{0:.2f}".format(lower_temp))
+					lower_k = k
+					lower_type = 'C'
 		ub.append(upper)
 		lb.append(lower)
-		print('The bound for {}({}, {}) at strike {} on date {} is [{}, {}]'.format(comb_type, st1, st2, comb_strike, expiration_date, lower, upper))
+		print('{} <= P({}+{}, {}) <= {}'.format(lower, st1, st2, comb_strike, upper))
+		if lower_type == '':
+			print('Lower bound 0: by definition of an option.')
+		elif lower_type == 'C':
+			print('Lower bound {}: P({}, {}) = {} - C({}, {}) = {}'.format(lower, st2, comb_strike-lower_k, \
+				float(opt2_df[(opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-lower_k)]['Highest Closing Bid Across All Exchanges']), \
+				st1, lower_k, \
+				float(opt1_df[(opt1_df['C=Call, P=Put'] == 'C') & (opt1_df['Strike Price of the Option Times 1000'] == lower_k)]['Lowest  Closing Ask Across All Exchanges'])))
+		else:
+			print('Lower bound {}: P({}, {}) = {} - C({}, {}) = {}'.format(lower, st1, lower_k, \
+				float(opt1_df[(opt1_df['C=Call, P=Put'] == 'P') & (opt1_df['Strike Price of the Option Times 1000'] == lower_k)]['Highest Closing Bid Across All Exchanges']), \
+				st2, comb_strike-lower_k, \
+				float(opt2_df[(opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-lower_k)]['Lowest  Closing Ask Across All Exchanges'])))
+		#TO-DO
+		if upper_k == math.inf:
+			print('Upper bound {}: put from a single stock'.format(upper))
+		else:
+			print('Upper bound {}: P({}, {}) = {} + P({}, {}) = {}'.format(upper, st1, upper_k, \
+				float(opt1_df[(opt1_df['C=Call, P=Put'] == 'P') & (opt1_df['Strike Price of the Option Times 1000'] == upper_k)]['Lowest  Closing Ask Across All Exchanges']), \
+				st2, comb_strike-upper_k, \
+				float(opt2_df[(opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-upper_k)]['Lowest  Closing Ask Across All Exchanges'])))
+		print('')
+
 	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int)/1000, ub, 'r.')
 	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int)/1000, lb, 'b.')
 	plt.title('Price bounds on put options of {} + {} across strikes.'.format(st1, st2))
-	pdb.set_trace()
+	plt.show()
 
 if comb_type == 'P-':
 	ub = []
 	lb = []
+	print('Finding constraints for P({}-{}) on date {}...'.format(st1, st2, expiration_date))
+
 	for comb_strike in np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int):
 		upper = math.inf
 		lower = 0
+		upper_k = math.inf
+		lower_k = math.inf
+		lower_type = ''
+
 		standard = (opt1_df['Strike Price of the Option Times 1000'] >= min(opt2_df['Strike Price of the Option Times 1000']) + comb_strike) & \
 			(opt1_df['Strike Price of the Option Times 1000'] <= max(opt2_df['Strike Price of the Option Times 1000']) + comb_strike)
 		for k in opt1_df[standard & (opt1_df['C=Call, P=Put'] == 'P')]['Strike Price of the Option Times 1000']:
@@ -172,15 +266,45 @@ if comb_type == 'P-':
 			filt2c = (opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == k-comb_strike)
 			filt2p = (opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == k-comb_strike)
 			if any(filt2c):
-				upper = min(upper, float(opt1_df[filt1p]['Highest Closing Bid Across All Exchanges']) + float(opt2_df[filt2c]['Highest Closing Bid Across All Exchanges']))
-				lower = max(lower, float(opt2_df[filt2c]['Highest Closing Bid Across All Exchanges']) - float(opt1_df[filt1c]['Lowest  Closing Ask Across All Exchanges']))
+				upper_temp = float(opt1_df[filt1p]['Lowest  Closing Ask Across All Exchanges']) + float(opt2_df[filt2c]['Lowest  Closing Ask Across All Exchanges'])
+				if upper_temp < upper:
+					upper = float("{0:.2f}".format(upper_temp))
+					upper_k = k
+				lower_temp = float(opt2_df[filt2c]['Highest Closing Bid Across All Exchanges']) - float(opt1_df[filt1c]['Lowest  Closing Ask Across All Exchanges'])
+				if lower_temp > lower:
+					lower = float("{0:.2f}".format(lower_temp))
+					lower_k = k
+					lower_type = 'C'
 			if any(filt2p):
-				lower = max(lower, float(opt1_df[filt1p]['Highest Closing Bid Across All Exchanges']) - float(opt2_df[filt2p]['Lowest  Closing Ask Across All Exchanges']))
+				lower_temp = float(opt1_df[filt1p]['Highest Closing Bid Across All Exchanges']) - float(opt2_df[filt2p]['Lowest  Closing Ask Across All Exchanges'])
+				if lower_temp > lower:
+					lower = float("{0:.2f}".format(lower_temp))
+					lower_k = k
+					lower_type = 'P'
 		ub.append(upper)
 		lb.append(lower)
-		print('The bound for {}({}, {}) at strike {} on date {} is [{}, {}]'.format(comb_type, st1, st2, comb_strike, expiration_date, lower, upper))
+		print('{} <= P({}-{}, {}) <= {}'.format(lower, st1, st2, comb_strike, upper))
+		if lower_type == '':
+			print('Lower bound 0: by definition of an option.')
+		elif lower_type == 'C':
+			print('Lower bound {}: C({}, {}) = {} - C({}, {}) = {}'.format(lower, st2, lower_k-comb_strike, \
+				float(opt2_df[(opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == lower_k-comb_strike)]['Highest Closing Bid Across All Exchanges']), \
+				st1, lower_k, \
+				float(opt1_df[(opt1_df['C=Call, P=Put'] == 'C') & (opt1_df['Strike Price of the Option Times 1000'] == lower_k)]['Lowest  Closing Ask Across All Exchanges'])))
+		else:
+			print('Lower bound {}: P({}, {}) = {} - P({}, {}) = {}'.format(lower, st1, lower_k, \
+				float(opt1_df[(opt1_df['C=Call, P=Put'] == 'P') & (opt1_df['Strike Price of the Option Times 1000'] == lower_k)]['Highest Closing Bid Across All Exchanges']), \
+				st2, lower_k-comb_strike, \
+				float(opt2_df[(opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == lower_k-comb_strike)]['Lowest  Closing Ask Across All Exchanges'])))
+		
+		print('Upper bound {}: P({}, {}) = {} + C({}, {}) = {}'.format(upper, st1, upper_k, \
+			float(opt1_df[(opt1_df['C=Call, P=Put'] == 'P') & (opt1_df['Strike Price of the Option Times 1000'] == upper_k)]['Lowest  Closing Ask Across All Exchanges']), \
+			st2, upper_k-comb_strike, \
+			float(opt2_df[(opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == upper_k-comb_strike)]['Lowest  Closing Ask Across All Exchanges'])))
+		print('')
+
 	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int)/1000, ub, 'r.')
 	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int)/1000, lb, 'b.')
 	plt.title('Price bounds on put options of {} - {} across strikes.'.format(st1, st2))
-	pdb.set_trace()
+	plt.show()
 

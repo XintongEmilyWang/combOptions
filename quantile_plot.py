@@ -17,8 +17,9 @@ prob = np.round_(prob*1e6).astype(int)
 strikes = np.load('strikes.npy')
 dates = np.load('dates.npy')
 freqs = []
+quantiles = np.linspace(10, 90, (90-10)/10+1).astype(int)
 for i in range(0, len(prob)):
-	freqs.append(np.percentile(np.repeat(strikes, prob[i]), [10, 20, 30, 40, 50, 60, 70, 80, 90]))
+	freqs.append(np.percentile(np.repeat(strikes, prob[i]), quantiles))
 freqs = np.array(freqs)
 
 stock_hist_filename = os.path.join(input_dir, stock+"_"+"hist.xlsx")
@@ -31,16 +32,12 @@ hist_prices = []
 for d in hist_dates:
 	hist_prices.append(int(stock_hist_df[stock_hist_df['The Date for this Price Record'] == d]['Close (or Bid-Ask Average if Negative)']*1000))
 
+cmap = plt.get_cmap('rainbow')
+colors = [cmap(i) for i in np.linspace(0, 1, quantiles.shape[0])]
 plt.plot(hist_dates, hist_prices, color = 'black', marker = '.', linestyle=':', label = 'past prices')
-plt.plot(dates[:-3], freqs[:, 0], 'b.', linestyle=':', label = '10 quantile')
-plt.plot(dates[:-3], freqs[:, 1], 'r.', linestyle=':', label = '20 quantile')
-plt.plot(dates[:-3], freqs[:, 2], 'g.', linestyle=':', label = '30 quantile')
-plt.plot(dates[:-3], freqs[:, 3], 'b.', linestyle=':', label = '40 quantile')
-plt.plot(dates[:-3], freqs[:, 4], 'r.', linestyle=':', label = '50 quantile')
-plt.plot(dates[:-3], freqs[:, 5], 'g.', linestyle=':', label = '60 quantile')
-plt.plot(dates[:-3], freqs[:, 6], 'b.', linestyle=':', label = '70 quantile')
-plt.plot(dates[:-3], freqs[:, 7], 'r.', linestyle=':', label = '80 quantile')
-plt.plot(dates[:-3], freqs[:, 8], 'g.', linestyle=':', label = '90 quantile')
+for i in range(0, quantiles.shape[0]):
+	plt.plot(dates[:-3], freqs[:, i], color=colors[i], marker = '.', linestyle=':', label = '{}th quantile'.format(quantiles[i]))
+
 plt.legend()
 plt.title('{} past and projected prices at {} across time.'.format(stock, date))
 pdb.set_trace()

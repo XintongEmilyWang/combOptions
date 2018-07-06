@@ -46,7 +46,7 @@ if comb_type == 'C+':
 	ub = []
 	lb = []
 	print('Finding constraints for C({}+{}) on date {}...'.format(st1, st2, expiration_date))
-	for comb_strike in np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int):
+	for comb_strike in np.linspace(addition_h, addition_l, (addition_h-addition_l)/5000+1).astype(int):
 		upper = math.inf
 		lower = 0
 		upper_k = math.inf
@@ -108,8 +108,8 @@ if comb_type == 'C+':
 			float(opt2_df[(opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-upper_k)]['Lowest  Closing Ask Across All Exchanges'])))
 		print('')
 	
-	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int)/1000, ub, 'r.')
-	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int)/1000, lb, 'b.')
+	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/5000+1).astype(int)/1000, ub, 'r.')
+	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/5000+1).astype(int)/1000, lb, 'b.')
 	plt.title('Price bounds on call options of {} + {} across strikes.'.format(st1, st2))
 	plt.show()
 
@@ -117,7 +117,7 @@ if comb_type == 'C-':
 	ub = []
 	lb = []
 	print('Finding constraints for C({}-{}) on date {}...'.format(st1, st2, expiration_date))
-	for comb_strike in np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int):
+	for comb_strike in np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/5000+1).astype(int):
 		upper = math.inf
 		lower = 0
 		upper_k = math.inf
@@ -169,8 +169,8 @@ if comb_type == 'C-':
 			float(opt2_df[(opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == upper_k-comb_strike)]['Lowest  Closing Ask Across All Exchanges'])))
 		print('')
 
-	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int)/1000, ub, 'r.')
-	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int)/1000, lb, 'b.')
+	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/5000+1).astype(int)/1000, ub, 'r.')
+	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/5000+1).astype(int)/1000, lb, 'b.')
 	plt.title('Price bounds on call options of {} - {} across strikes.'.format(st1, st2))
 	plt.show()
 
@@ -178,7 +178,7 @@ if comb_type == 'P+':
 	ub = []
 	lb = []
 	print('Finding constraints for P({}+{}) on date {}...'.format(st1, st2, expiration_date))
-	for comb_strike in np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int):
+	for comb_strike in np.linspace(addition_h, addition_l, (addition_h-addition_l)/5000+1).astype(int):
 		upper = math.inf
 		lower = 0
 		upper_k = math.inf
@@ -241,8 +241,8 @@ if comb_type == 'P+':
 				float(opt2_df[(opt2_df['C=Call, P=Put'] == 'P') & (opt2_df['Strike Price of the Option Times 1000'] == comb_strike-upper_k)]['Lowest  Closing Ask Across All Exchanges'])))
 		print('')
 
-	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int)/1000, ub, 'r.')
-	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/10000+1).astype(int)/1000, lb, 'b.')
+	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/5000+1).astype(int)/1000, ub, 'r.')
+	plt.plot(np.linspace(addition_h, addition_l, (addition_h-addition_l)/5000+1).astype(int)/1000, lb, 'b.')
 	plt.title('Price bounds on put options of {} + {} across strikes.'.format(st1, st2))
 	plt.show()
 
@@ -251,7 +251,7 @@ if comb_type == 'P-':
 	lb = []
 	print('Finding constraints for P({}-{}) on date {}...'.format(st1, st2, expiration_date))
 
-	for comb_strike in np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int):
+	for comb_strike in np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/5000+1).astype(int):
 		upper = math.inf
 		lower = 0
 		upper_k = math.inf
@@ -303,8 +303,8 @@ if comb_type == 'P-':
 			float(opt2_df[(opt2_df['C=Call, P=Put'] == 'C') & (opt2_df['Strike Price of the Option Times 1000'] == upper_k-comb_strike)]['Lowest  Closing Ask Across All Exchanges'])))
 		print('')
 
-	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int)/1000, ub, 'r.')
-	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/10000+1).astype(int)/1000, lb, 'b.')
+	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/5000+1).astype(int)/1000, ub, 'r.')
+	plt.plot(np.linspace(subtraction_l, subtraction_h, (subtraction_h-subtraction_l)/5000+1).astype(int)/1000, lb, 'b.')
 	plt.title('Price bounds on put options of {} - {} across strikes.'.format(st1, st2))
 	plt.show()
 

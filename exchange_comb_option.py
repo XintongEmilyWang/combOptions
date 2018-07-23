@@ -25,8 +25,8 @@ opt2_df = pd.read_excel(opt2_stats_filename)
 assert(np.array(opt1_df['AM Settlement Flag'].astype(int)).all()==0), "options on the security expire at the market open of the last trading day"
 assert(np.array(opt2_df['AM Settlement Flag'].astype(int)).all()==0), "options on the security expire at the market open of the last trading day"
 
-opt1_df = opt1_df[(opt1_df['Expiration Date of the Option']==expiration_date) & (opt1_df['C=Call, P=Put']=='C')]
-opt2_df = opt2_df[(opt2_df['Expiration Date of the Option']==expiration_date) & (opt2_df['C=Call, P=Put']=='C')]
+opt1_df = opt1_df[(opt1_df['Expiration Date of the Option']==expiration_date) & (opt1_df['C=Call, P=Put']=='C') & (opt1_df['Highest Closing Bid Across All Exchanges'] > 0)]
+opt2_df = opt2_df[(opt2_df['Expiration Date of the Option']==expiration_date) & (opt2_df['C=Call, P=Put']=='C') & (opt2_df['Highest Closing Bid Across All Exchanges'] > 0)]
 opt1_df['Strike Price of the Option Times 1000'] = opt1_df['Strike Price of the Option Times 1000'].astype(int)
 opt1_df['Highest Closing Bid Across All Exchanges'] = opt1_df['Highest Closing Bid Across All Exchanges'].astype(float)
 opt1_df['Lowest  Closing Ask Across All Exchanges'] = opt1_df['Lowest  Closing Ask Across All Exchanges'].astype(float)
@@ -63,13 +63,13 @@ if buy_or_sell == 'buy':
 			temp[1] = -1
 		temp[2] = strikes[i]
 		temp[3+i] = -1
-		temp[3+len(opt1_asks)+i] = 1
+		temp[3+len(asks)+i] = 1
 		A[i, :] = temp
 	A[-1, :] =  np.concatenate([[coeff1, coeff2, -1*strike], np.zeros((len(asks)+1)*2)])
 	A[-1, -1] = 1
 	A[-1, -2] = -1
 	M = matrix(A.transpose())
-	sol=solvers.lp(c,M,b)
+	sol=solvers.lp(c,M,b,verbose=True)
 	frac = np.array(sol['x'])
 
 	accept_frac = float("{0:.2f}".format(frac[-1, 0]))
@@ -87,10 +87,11 @@ if buy_or_sell == 'buy':
 	print('The maximized revenue is {}.'.format(profit))
 else: 
 	c = matrix(np.concatenate([-1*bids, [price]]))
+	# b = matrix(np.concatenate([np.concatenate([np.concatenate([np.zeros(3+len(bids)), np.ones(len(bids))*999]), -0.0001*np.zeros(len(bids))]), [0, 1]]))
 	b = matrix(np.concatenate([np.concatenate([np.zeros(3+len(bids)), np.ones(len(bids))*999]), [0, 1]]))
-	A = np.zeros((len(bids)+1, (len(bids)+1)*2+3))
+	A = np.zeros((len(bids)+1, len(bids)*2+5))
 	for i in range(0, len(bids)):
-		temp = np.zeros((len(bids)+1)*2+3)
+		temp = np.zeros(len(bids)*2+5)
 		if i < len(opt1_bids):
 			temp[0] = 1
 			temp[1] = 0
@@ -99,13 +100,14 @@ else:
 			temp[1] = 1
 		temp[2] = -strikes[i]
 		temp[3+i] = -1
-		temp[3+len(opt1_bids)+i] = 1
+		temp[3+len(bids)+i] = 1
+		# temp[3+2*len(bids)+i] = -1*bids[i]
 		A[i, :] = temp
-	A[-1, :] =  np.concatenate([[-1*coeff1, -1*coeff2, strike], np.zeros((len(bids)+1)*2)])
+	A[-1, :] =  np.concatenate([[-1*coeff1, -1*coeff2, strike], np.zeros(len(bids)*2+2)])
 	A[-1, -1] = 1
 	A[-1, -2] = -1
 	M = matrix(A.transpose())
-	sol=solvers.lp(c,M,b)
+	sol=solvers.lp(c,M,b, verbose = True)
 	frac = np.array(sol['x'])
 
 	accept_frac = float("{0:.2f}".format(frac[-1, 0]))
@@ -121,8 +123,5 @@ else:
 				profit = profit+frac[i, 0]*bids[i]
 				print("Sell {} fraction of call option on {} at strike {} with bid price {}".format(float("{0:.4f}".format(frac[i, 0])), st2, strikes[i], bids[i]))
 	print('The maximized revenue is {}.'.format(profit))
-
-
-pdb.set_trace()
 
 

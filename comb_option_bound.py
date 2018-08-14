@@ -48,9 +48,10 @@ opt1_df.sort_values(by = ['Strike Price of the Option Times 1000'], inplace = Tr
 opt2_df.sort_values(by = ['Strike Price of the Option Times 1000'], inplace = True)
 
 # interested strike range
+# TO-DO: add strike interval as an input
 addition_l = coeff1*min(opt1_df['Strike Price of the Option Times 1000']) + coeff2*min(opt2_df['Strike Price of the Option Times 1000'])
 addition_h = coeff1*max(opt1_df['Strike Price of the Option Times 1000']) + coeff2*max(opt2_df['Strike Price of the Option Times 1000'])
-for strike in np.linspace(addition_l, addition_h, (addition_h-addition_l)/500+1).astype(int):
+for strike in np.linspace(addition_l, addition_h, (addition_h-addition_l)/50+1).astype(int):
 	print('############################C({}{}+{}{}, {})############################'.format(coeff1, st1, coeff2, st2, strike))
 	buy_or_sell = 'buy'
 	price = 10000

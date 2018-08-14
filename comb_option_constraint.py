@@ -46,7 +46,7 @@ if comb_type == 'C+':
 	ub = []
 	lb = []
 	print('Finding constraints for C({}+{}) on date {}...'.format(st1, st2, expiration_date))
-	for comb_strike in np.linspace(addition_h, addition_l, (addition_h-addition_l)/5000+1).astype(int):
+	for comb_strike in np.linspace(addition_h, addition_l, (addition_h-addition_l)/50+1).astype(int):
 		upper = math.inf
 		lower = 0
 		upper_k = math.inf

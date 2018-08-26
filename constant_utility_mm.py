@@ -44,7 +44,7 @@ class ConstantUtilityMM:
 		# fl = min(self.strikes)
 		# cl = max(self.strikes)
 		# self.strikes = np.linspace(fl, cl, (cl-fl)/0.5+1)
-		cost = 5e5
+		cost = 1e5
 		w = [cost] * self.strikes.shape[0]
 		# the vector of all quantities of shares held by traders
 		q = [0] * self.strikes.shape[0]
@@ -94,25 +94,24 @@ class ConstantUtilityMM:
 					if np.sign(call_mm_sell)<=0 and np.absolute(np.absolute(call_mm_sell)-call_ask)>=0.01 \
 						and np.absolute(call_mm_sell) > call_ask:
 						q = q + q_delta
-						cost = new_cost
-				
-				k = bisect.bisect_left(self.strikes, self.strikes[i], lo=0, hi=len(self.strikes))
-				if self.strikes[i] == self.strikes[k]:
-					put_bid = self.p_bids[k]
-					put_ask = self.p_asks[k]
-					new_cost, q_delta = self.solve_implicit_C(cost, subjective, q, np.maximum(self.strikes[i]-self.strikes, 0), U)
-					put_mm_buy = new_cost - cost
-					if np.sign(put_mm_buy) >= 0 and np.absolute(np.absolute(put_mm_buy)-put_bid) > 0.01 \
-						and np.absolute(put_mm_buy) < put_bid:
-						q = q + q_delta
-						cost = new_cost
-					# pdb.set_trace()
-					new_cost, q_delta = self.solve_implicit_C(cost, subjective, q, -np.maximum(self.strikes[i]-self.strikes, 0), U)
-					put_mm_sell = new_cost - cost
-					if np.sign(put_mm_sell) <= 0 and np.absolute(np.absolute(put_mm_sell)-put_ask) > 0.01 \
-						and np.absolute(put_mm_sell) > put_ask:
-						q = q + q_delta
-						cost = new_cost
+						cost = new_cost				
+				# k = bisect.bisect_left(self.strikes, self.strikes[i], lo=0, hi=len(self.strikes))
+				# if self.strikes[i] == self.strikes[k]:
+				# 	put_bid = self.p_bids[k]
+				# 	put_ask = self.p_asks[k]
+				# 	new_cost, q_delta = self.solve_implicit_C(cost, subjective, q, np.maximum(self.strikes[i]-self.strikes, 0), U)
+				# 	put_mm_buy = new_cost - cost
+				# 	if np.sign(put_mm_buy) >= 0 and np.absolute(np.absolute(put_mm_buy)-put_bid) > 0.01 \
+				# 		and np.absolute(put_mm_buy) < put_bid:
+				# 		q = q + q_delta
+				# 		cost = new_cost
+				# 	# pdb.set_trace()
+				# 	new_cost, q_delta = self.solve_implicit_C(cost, subjective, q, -np.maximum(self.strikes[i]-self.strikes, 0), U)
+				# 	put_mm_sell = new_cost - cost
+				# 	if np.sign(put_mm_sell) <= 0 and np.absolute(np.absolute(put_mm_sell)-put_ask) > 0.01 \
+				# 		and np.absolute(put_mm_sell) > put_ask:
+				# 		q = q + q_delta
+				# 		cost = new_cost
 			it = it+1
 		return P[-1]
 	

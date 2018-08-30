@@ -1,9 +1,11 @@
 import pdb
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from scipy.stats import norm, entropy
 from scipy.misc import derivative
 from scipy.optimize import fsolve
+import single_option_bounds
 
 def u(w):
 	#return -np.exp(-0.1*np.array(w))
@@ -17,7 +19,62 @@ def v(w):
 def func(x, p_s, q, k):
 	return sum(p_s*np.array(u(x-q)))-k
 
+def mm(K, call_bids, call_asks, put_bids, put_asks):
+	cost = 10000
+	w = [cost] * K.shape[0]
+	# the vector of all quantities of shares held by traders
+	q = [0] * K.shape[0]
+	subjective = [1.0 / K.shape[0]] * K.shape[0]
+	U = sum(subjective * np.array(u(w)))
+	numIt = 10000
+	loss = [0] * numIt
+	P = []
+
+	it = 0
+	while it < numIt:
+		w = np.array(cost) - q
+		assert(w.all() > 0), "wealth is zero at iteration {}".format(it)
+		dw = []
+		for i in range(0, K.shape[0]):
+			dw.append(derivative(u, w[i], dx=1e-6))
+		deno = sum(subjective*np.array(dw))
+		p_i = subjective*np.array(dw)/deno
+		loss[it] = entropy(1.0*hist/sum(hist), p_i)
+		P.append(p_i)
+
+		if it % 1000 == 0:
+			print('The constant utility is {}'.format(sum(subjective*np.array(u(w)))))
+			print('For iteration {}, the loss is {}'.format(it, loss[it]))
+			print('The minimum wealth at iteration {} is {}'.format(it, min(w)))
+			print(p_i)
+
+		for i in range(0, K.shape[0]):
+			# call
+			call_mm_buy = fsolve(func, cost, args=(subjective, q+np.maximum(K-K[i], 0), U))-cost
+			if np.absolute(call_discrete[i]-np.absolute(call_mm_buy))>0.001 and call_discrete[i] > np.absolute(call_mm_buy):
+				q = q+np.maximum(K-K[i], 0)
+				cost = cost+call_mm_buy
+			call_mm_sell = fsolve(func, cost, args=(subjective, q-np.maximum(K-K[i], 0), U))-cost
+			if np.absolute(call_discrete[i]-np.absolute(call_mm_sell))>0.001 and call_discrete[i] < np.absolute(call_mm_sell):
+				q = q-np.maximum(K-K[i], 0)
+				cost = cost+call_mm_sell
+			# put
+			put_mm_buy = fsolve(func, cost, args=(subjective, q+np.maximum(K[i]-K, 0), U))-cost
+			if np.absolute(put_discrete[i]-np.absolute(put_mm_buy))>0.001 and put_discrete[i] > np.absolute(put_mm_buy):
+				q = q+np.maximum(K[i]-K, 0)
+				cost = cost+put_mm_buy
+			put_mm_sell = fsolve(func, cost, args=(subjective, q-np.maximum(K[i]-K, 0), U))-cost	
+			if np.absolute(put_discrete[i]-np.absolute(put_mm_sell))>0.001 and put_discrete[i] < np.absolute(put_mm_sell):
+				q = q-np.maximum(K[i]-K, 0)
+				cost = cost+put_mm_sell
+		it = it+1
+	np.set_printoptions(suppress=True, formatter={'float_kind':'{:0.4f}'.format})
+	print('The minimum loss is {}, reached at {} iteration.'.format(np.min(loss), np.argmin(loss)))
+
 r, mu, sigma, s0 = 0.08, 0.15, 0.3, 50
+in_the_money_prop = 0.05
+around_the_money_prop = 0.08
+out_the_money_prop = 0.15
 #np.random.seed(101)
 st = np.random.lognormal(np.log(s0)+(mu-sigma*sigma/2), sigma, 10000)
 fl = np.floor(np.min(st)/5)*5
@@ -27,71 +84,71 @@ hist, bin_edges = np.histogram(st, bins = np.linspace(fl, cl, (cl-fl)/5+1))
 #plt.show()
 
 K = bin_edges[:-1]
-call = []
-put = []
-for k in K:
-	d1 = (np.log(s0/k)+(r+sigma*sigma/2))/sigma
-	d2 = d1-sigma
-	call.append(np.exp(-r)*(s0*norm.cdf(d1)*np.exp(r)-k*norm.cdf(d2)))
-	put.append(k*np.exp(-r)*norm.cdf(-d2)-s0*norm.cdf(-d1))
+# call = []
+# put = []
+# for k in K:
+# 	d1 = (np.log(s0/k)+(r+sigma*sigma/2))/sigma
+# 	d2 = d1-sigma
+# 	call.append(np.exp(-r)*(s0*norm.cdf(d1)*np.exp(r)-k*norm.cdf(d2)))
+# 	put.append(k*np.exp(-r)*norm.cdf(-d2)-s0*norm.cdf(-d1))
 
+# ground truth
 call_discrete = []
 put_discrete = []
 for k in K:
 	call_discrete.append(sum(np.maximum(K-k, 0)*hist/hist.sum()))
 	put_discrete.append(sum(np.maximum(k-K, 0)*hist/hist.sum()))
 
-cost = 10000
-w = [cost] * K.shape[0]
-# the vector of all quantities of shares held by traders
-q = [0] * K.shape[0]
-subjective = [1.0 / K.shape[0]] * K.shape[0]
-U = sum(subjective * np.array(u(w)))
-numIt = 10000
-loss = [0] * numIt
-P = []
+# bid and ask spread with gaussian noise
+call_bids = []
+call_asks = []
+put_bids = []
+put_asks = []
+for i in range(0, len(K)):
+	call_bid = 1000
+	call_ask = 0
+	put_bid = 1000
+	put_ask = 0
+	if K[i] < 45:
+		while call_bid > call_ask:
+			call_bid = call_discrete[i] - in_the_money_prop*call_discrete[i]+np.random.normal(0, in_the_money_prop*call_discrete[i]*0.25, 1)
+			call_ask = call_discrete[i] + in_the_money_prop*call_discrete[i]+np.random.normal(0, in_the_money_prop*call_discrete[i]*0.25, 1)
+		while put_bid > put_ask:
+			put_bid = put_discrete[i] - out_the_money_prop*put_discrete[i]+np.random.normal(0, out_the_money_prop*put_discrete[i]*0.25, 1)
+			put_ask = put_discrete[i] + out_the_money_prop*put_discrete[i]+np.random.normal(0, out_the_money_prop*put_discrete[i]*0.25, 1)
+			print('{} and {}'.format(put_bid, put_ask))
+	elif K[i] >= 45 and K[i] <=55:
+		while call_bid > call_ask:
+			call_bid = call_discrete[i] - around_the_money_prop*call_discrete[i]+np.random.normal(0, in_the_money_prop*call_discrete[i]*0.25, 1)
+			call_ask = call_discrete[i] + around_the_money_prop*call_discrete[i]+np.random.normal(0, in_the_money_prop*call_discrete[i]*0.25, 1)
+		while put_bid > put_ask:
+			put_bid = put_discrete[i] - around_the_money_prop*put_discrete[i]+np.random.normal(0, out_the_money_prop*put_discrete[i]*0.25, 1)
+			put_ask = put_discrete[i] + around_the_money_prop*put_discrete[i]+np.random.normal(0, out_the_money_prop*put_discrete[i]*0.25, 1)
+	else:
+		while call_bid > call_ask:
+			call_bid = call_discrete[i] - out_the_money_prop*call_discrete[i]+np.random.normal(0, in_the_money_prop*call_discrete[i]*0.25, 1)
+			call_ask = call_discrete[i] + out_the_money_prop*call_discrete[i]+np.random.normal(0, in_the_money_prop*call_discrete[i]*0.25, 1)
+		while put_bid > put_ask:
+			put_bid = put_discrete[i] - in_the_money_prop*put_discrete[i]+np.random.normal(0, out_the_money_prop*put_discrete[i]*0.25, 1)
+			put_ask = put_discrete[i] + in_the_money_prop*put_discrete[i]+np.random.normal(0, out_the_money_prop*put_discrete[i]*0.25, 1)
+	call_bids.append(call_bid[0])
+	call_asks.append(call_ask[0])
+	put_bids.append(put_bid[0])
+	put_asks.append(put_ask[0])
 
-it = 0
-while it < numIt:
-	w = np.array(cost) - q
-	assert(w.all() > 0), "wealth is zero at iteration {}".format(it)
-	dw = []
-	for i in range(0, K.shape[0]):
-		dw.append(derivative(u, w[i], dx=1e-6))
-	deno = sum(subjective*np.array(dw))
-	p_i = subjective*np.array(dw)/deno
-	loss[it] = entropy(1.0*hist/sum(hist), p_i)
-	P.append(p_i)
+# tighten the spread
+d = {'C=Call, P=Put': np.concatenate((['C']*len(K), ['P']*len(K)), axis=0), \
+	'Unit': np.concatenate(([1]*len(K), [-1]*len(K)), axis=0), \
+	'Strike Price of the Option Times 1000': np.concatenate((K, -1*K), axis=0), \
+	'Highest Closing Bid Across All Exchanges': np.concatenate((call_bids, put_bids), axis=0), \
+	'Lowest  Closing Ask Across All Exchanges': np.concatenate((call_asks, put_asks), axis=0), \
+	'Expiration Date of the Option': [252]*2*len(K)}
+opt_df = pd.DataFrame(data=d)
+spread_shrinker = single_option_bounds.SingleOptionBounds(st='S', opt_df=opt_df, strike_array = K, days_to_expiration=252)
+strikes, call_bids, call_asks, put_bids, put_asks = spread_shrinker.tighten_spread()
+pdb.set_trace()
 
-	if it % 50 == 0:
-		print('The constant utility is {}'.format(sum(subjective*np.array(u(w)))))
-		print('For iteration {}, the loss is {}'.format(it, loss[it]))
-		print('The minimum wealth at iteration {} is {}'.format(it, min(w)))
-		print(p_i)
 
-	for i in range(0, K.shape[0]):
-		# call
-		call_mm_buy = fsolve(func, cost, args=(subjective, q+np.maximum(K-K[i], 0), U))-cost
-		if np.absolute(call_discrete[i]-np.absolute(call_mm_buy))>0.001 and call_discrete[i] > np.absolute(call_mm_buy):
-			q = q+np.maximum(K-K[i], 0)
-			cost = cost+call_mm_buy
-		call_mm_sell = fsolve(func, cost, args=(subjective, q-np.maximum(K-K[i], 0), U))-cost
-		if np.absolute(call_discrete[i]-np.absolute(call_mm_sell))>0.001 and call_discrete[i] < np.absolute(call_mm_sell):
-			q = q-np.maximum(K-K[i], 0)
-			cost = cost+call_mm_sell
-		# put
-		put_mm_buy = fsolve(func, cost, args=(subjective, q+np.maximum(K[i]-K, 0), U))-cost
-		if np.absolute(put_discrete[i]-np.absolute(put_mm_buy))>0.001 and put_discrete[i] > np.absolute(put_mm_buy):
-			q = q+np.maximum(K[i]-K, 0)
-			cost = cost+put_mm_buy
-		put_mm_sell = fsolve(func, cost, args=(subjective, q-np.maximum(K[i]-K, 0), U))-cost	
-		if np.absolute(put_discrete[i]-np.absolute(put_mm_sell))>0.001 and put_discrete[i] < np.absolute(put_mm_sell):
-			q = q-np.maximum(K[i]-K, 0)
-			cost = cost+put_mm_sell
-	it = it+1
-
-np.set_printoptions(suppress=True, formatter={'float_kind':'{:0.4f}'.format})
-print('The minimum loss is {}, reached at {} iteration.'.format(np.min(loss), np.argmin(loss)))
 fig1 = plt.figure()
 plt.plot(K, 1.0*hist/sum(hist), 'ro')
 plt.plot(K, P[np.argmin(loss)], 'bx')

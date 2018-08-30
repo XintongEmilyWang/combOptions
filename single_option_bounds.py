@@ -23,7 +23,7 @@ class SingleOptionBounds:
 		for strike_on_expiration in self.strike_array:
 			# strikes.append(strike_on_expiration)
 			for c_or_p in ['C', 'P']:
-				print('############################{}({}, {}, {})############################'.format(c_or_p, self.st, strike_on_expiration, self.days_to_expiration))
+				# print('############################{}({}, {}, {})############################'.format(c_or_p, self.st, strike_on_expiration, self.days_to_expiration))
 				if c_or_p == 'C':
 					call_or_put = 1
 				elif c_or_p == 'P':
@@ -54,14 +54,14 @@ class SingleOptionBounds:
 				# payoff = 0
 				for i in range(0, len(self.opt_df)):
 					if alpha[0,i].x > 1e-4:
-						print("Buy {} fraction of {}({}, {}, {}) with ask price {}".format(float("{0:.4f}".format(alpha[0,i].x)), \
-							self.opt_df['C=Call, P=Put'][i], self.st, np.abs(self.opt_df['Strike Price of the Option Times 1000'][i]), self.opt_df['Expiration Date of the Option'][i], \
-							self.opt_df['Lowest  Closing Ask Across All Exchanges'][i]))
+						# print("Buy {} fraction of {}({}, {}, {}) with ask price {}".format(float("{0:.4f}".format(alpha[0,i].x)), \
+						# 	self.opt_df['C=Call, P=Put'][i], self.st, np.abs(self.opt_df['Strike Price of the Option Times 1000'][i]), self.opt_df['Expiration Date of the Option'][i], \
+						# 	self.opt_df['Lowest  Closing Ask Across All Exchanges'][i]))
 						expense = expense + alpha[0,i].x*self.opt_df['Lowest  Closing Ask Across All Exchanges'][i]
 						# payoff = payoff + alpha[0,i].x*max(msft*self.opt_df['Unit'][i]-self.opt_df['Strike Price of the Option Times 1000'][i],0)
 				raw_ask = self.opt_df[(self.opt_df['Expiration Date of the Option']==self.days_to_expiration) & (self.opt_df['Strike Price of the Option Times 1000']==call_or_put*strike_on_expiration) \
 					& (self.opt_df['C=Call, P=Put'] == c_or_p)]['Lowest  Closing Ask Across All Exchanges'].values[0]
-				print('~~~~~~~The upper bound is {}. The raw ask is {}.~~~~~~~'.format(float("{0:.4f}".format(expense)), raw_ask))
+				# print('~~~~~~~The upper bound is {}. The raw ask is {}.~~~~~~~'.format(float("{0:.4f}".format(expense)), raw_ask))
 				assert (raw_ask+0.009 >= expense), "wrong upper bound!"
 
 				try:
@@ -105,30 +105,35 @@ class SingleOptionBounds:
 				# payoff = 0
 				for i in range(0, len(self.opt_df)):
 					if beta[0,i].x > 1e-4:
-						print("Sell {} fraction of {}({}, {}, {}) with bid price {}".format(float("{0:.4f}".format(beta[0,i].x)), \
-							self.opt_df['C=Call, P=Put'][i], self.st, np.abs(self.opt_df['Strike Price of the Option Times 1000'][i]), self.opt_df['Expiration Date of the Option'][i], \
-							self.opt_df['Highest Closing Bid Across All Exchanges'][i]))
+						# print("Sell {} fraction of {}({}, {}, {}) with bid price {}".format(float("{0:.4f}".format(beta[0,i].x)), \
+						# 	self.opt_df['C=Call, P=Put'][i], self.st, np.abs(self.opt_df['Strike Price of the Option Times 1000'][i]), self.opt_df['Expiration Date of the Option'][i], \
+						# 	self.opt_df['Highest Closing Bid Across All Exchanges'][i]))
 						profit = profit + beta[0,i].x*self.opt_df['Highest Closing Bid Across All Exchanges'][i]
 						# payoff = payoff - beta[0,i].x*max(msft*self.opt_df['Unit'][i]-self.opt_df['Strike Price of the Option Times 1000'][i],0)
 					if gamma[0,i].x > 1e-4:
-						print("Buy {} fraction of {}({}, {}, {}) with ask price {}".format(float("{0:.4f}".format(gamma[0,i].x)), \
-							self.opt_df['C=Call, P=Put'][i], self.st, np.abs(self.opt_df['Strike Price of the Option Times 1000'][i]), self.opt_df['Expiration Date of the Option'][i], \
-							self.opt_df['Lowest  Closing Ask Across All Exchanges'][i]))
+						# print("Buy {} fraction of {}({}, {}, {}) with ask price {}".format(float("{0:.4f}".format(gamma[0,i].x)), \
+						# 	self.opt_df['C=Call, P=Put'][i], self.st, np.abs(self.opt_df['Strike Price of the Option Times 1000'][i]), self.opt_df['Expiration Date of the Option'][i], \
+						# 	self.opt_df['Lowest  Closing Ask Across All Exchanges'][i]))
 						profit = profit - gamma[0,i].x*self.opt_df['Lowest  Closing Ask Across All Exchanges'][i]
 						# payoff = payoff + gamma[0,i].x*max(msft*self.opt_df['Unit'][i]-self.opt_df['Strike Price of the Option Times 1000'][i],0)
 				
 				raw_bid = self.opt_df[(self.opt_df['Expiration Date of the Option']==self.days_to_expiration) & (self.opt_df['Strike Price of the Option Times 1000']==call_or_put*strike_on_expiration) \
 					& (self.opt_df['C=Call, P=Put'] == c_or_p)]['Highest Closing Bid Across All Exchanges'].values[0]
-				print('~~~~~~~The lower bound is {}. The raw bid is {}.~~~~~~~'.format(float("{0:.4f}".format(profit)), raw_bid))
+				# print('~~~~~~~The lower bound is {}. The raw bid is {}.~~~~~~~'.format(float("{0:.4f}".format(profit)), raw_bid))
 				assert (raw_bid-0.009 <= profit), "wrong lower bound!"
 
 				assert(expense >= 0), "Upper bound falls negative."
 				assert(profit >= 0), "Lower bound falls negative."
-				assert(expense >= profit-0.005), "Arbitrage found."
+				# assert(expense >= profit-0.005), "Arbitrage found."
+				if expense < profit:
+					arbitrage = 1
+				else:
+					arbitrage = 0
+
 				if call_or_put == 1:
 					call_asks.append(expense)
 					call_bids.append(profit)
 				else:
 					put_asks.append(expense)
 					put_bids.append(profit)
-		return np.array(self.strike_array), np.array(call_bids), np.array(call_asks), np.array(put_bids), np.array(put_asks)
+		return arbitrage, np.array(self.strike_array), np.array(call_bids), np.array(call_asks), np.array(put_bids), np.array(put_asks)

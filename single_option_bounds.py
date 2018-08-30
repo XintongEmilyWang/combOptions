@@ -8,22 +8,20 @@ import math
 from gurobipy import *
 
 class SingleOptionBounds:
-	def __init__(self, st, opt_df, strike_low, strike_high, strike_interval, days_to_expiration):
+	def __init__(self, st, opt_df, strike_array, days_to_expiration):
 		self.st = st
 		self.opt_df = opt_df
-		self.strike_low = strike_low
-		self.strike_high = strike_high
-		self.strike_interval = strike_interval
+		self.strike_array = strike_array
 		self.days_to_expiration = days_to_expiration
 
 	def tighten_spread(self):
-		strikes = []
+		# strikes = []
 		call_bids = []
 		call_asks = []
 		put_bids = []
 		put_asks = []
-		for strike_on_expiration in np.linspace(self.strike_low, self.strike_high, (self.strike_high-self.strike_low)/self.strike_interval+1):
-			strikes.append(strike_on_expiration)
+		for strike_on_expiration in self.strike_array:
+			# strikes.append(strike_on_expiration)
 			for c_or_p in ['C', 'P']:
 				print('############################{}({}, {}, {})############################'.format(c_or_p, self.st, strike_on_expiration, self.days_to_expiration))
 				if c_or_p == 'C':
@@ -61,7 +59,10 @@ class SingleOptionBounds:
 							self.opt_df['Lowest  Closing Ask Across All Exchanges'][i]))
 						expense = expense + alpha[0,i].x*self.opt_df['Lowest  Closing Ask Across All Exchanges'][i]
 						# payoff = payoff + alpha[0,i].x*max(msft*self.opt_df['Unit'][i]-self.opt_df['Strike Price of the Option Times 1000'][i],0)
-				print('~~~~~~~The upper bound is {}.~~~~~~~'.format(float("{0:.2f}".format(expense))))
+				raw_ask = self.opt_df[(self.opt_df['Expiration Date of the Option']==self.days_to_expiration) & (self.opt_df['Strike Price of the Option Times 1000']==call_or_put*strike_on_expiration) \
+					& (self.opt_df['C=Call, P=Put'] == c_or_p)]['Lowest  Closing Ask Across All Exchanges'].values[0]
+				print('~~~~~~~The upper bound is {}. The raw ask is {}.~~~~~~~'.format(float("{0:.4f}".format(expense)), raw_ask))
+				assert (raw_ask+0.009 >= expense), "wrong upper bound!"
 
 				try:
 					model = Model("lb")
@@ -81,11 +82,14 @@ class SingleOptionBounds:
 						model.addLConstr(sum(beta[0,i]*self.opt_df['Strike Price of the Option Times 1000'][i] for i in range(0, len(self.opt_df))), GRB.LESS_EQUAL, 0)
 						model.addLConstr(sum((beta[0,i]-gamma[0,i])*self.opt_df['Unit'][i] for i in range(0, len(self.opt_df))), GRB.GREATER_EQUAL, call_or_put)
 						model.addLConstr(sum((beta[0,i]-gamma[0,i])*self.opt_df['Unit'][i] for i in range(0, len(self.opt_df))), GRB.LESS_EQUAL, 0)
+					
 					model.addLConstr(sum((beta[0,i]-gamma[0,i]) for i in range(0, len(self.opt_df)))*call_or_put*strike_on_expiration + \
 						sum(gamma[0,i]*self.opt_df['Strike Price of the Option Times 1000'][i] for i in range(0, len(self.opt_df))), \
 						GRB.LESS_EQUAL, sum(beta[0,i]*self.opt_df['Strike Price of the Option Times 1000'][i] for i in range(0, len(self.opt_df))))
-					model.addLConstr(sum(binary[0, i] for i in range(0, len(self.opt_df)))*call_or_put*strike_on_expiration+sum(gamma[0,i]*self.opt_df['Strike Price of the Option Times 1000'][i] for i in range(0, len(self.opt_df))), \
+					# sum(binary[0, i] for i in range(0, len(self.opt_df)))*
+					model.addLConstr(call_or_put*strike_on_expiration+sum(gamma[0,i]*self.opt_df['Strike Price of the Option Times 1000'][i] for i in range(0, len(self.opt_df))), \
 						GRB.LESS_EQUAL, sum(beta[0,i]*self.opt_df['Strike Price of the Option Times 1000'][i] for i in range(0, len(self.opt_df))))
+					
 					for i in range(0, len(self.opt_df)):
 						model.addLConstr(beta[0,i]*self.opt_df['Expiration Date of the Option'][i], GRB.LESS_EQUAL, beta[0,i]*self.days_to_expiration)
 						model.addLConstr(gamma[0,i]*self.opt_df['Expiration Date of the Option'][i], GRB.GREATER_EQUAL, gamma[0,i]*self.days_to_expiration)
@@ -112,14 +116,19 @@ class SingleOptionBounds:
 							self.opt_df['Lowest  Closing Ask Across All Exchanges'][i]))
 						profit = profit - gamma[0,i].x*self.opt_df['Lowest  Closing Ask Across All Exchanges'][i]
 						# payoff = payoff + gamma[0,i].x*max(msft*self.opt_df['Unit'][i]-self.opt_df['Strike Price of the Option Times 1000'][i],0)
-				print('~~~~~~~The lower bound is {}.~~~~~~~'.format(float("{0:.2f}".format(profit))))
+				
+				raw_bid = self.opt_df[(self.opt_df['Expiration Date of the Option']==self.days_to_expiration) & (self.opt_df['Strike Price of the Option Times 1000']==call_or_put*strike_on_expiration) \
+					& (self.opt_df['C=Call, P=Put'] == c_or_p)]['Highest Closing Bid Across All Exchanges'].values[0]
+				print('~~~~~~~The lower bound is {}. The raw bid is {}.~~~~~~~'.format(float("{0:.4f}".format(profit)), raw_bid))
+				assert (raw_bid-0.009 <= profit), "wrong lower bound!"
+
 				assert(expense >= 0), "Upper bound falls negative."
 				assert(profit >= 0), "Lower bound falls negative."
-				assert(expense >= profit), "Arbitrage found."
+				assert(expense >= profit-0.005), "Arbitrage found."
 				if call_or_put == 1:
 					call_asks.append(expense)
 					call_bids.append(profit)
 				else:
 					put_asks.append(expense)
 					put_bids.append(profit)
-		return np.array(strikes), np.array(call_bids), np.array(call_asks), np.array(put_bids), np.array(put_asks)
+		return np.array(self.strike_array), np.array(call_bids), np.array(call_asks), np.array(put_bids), np.array(put_asks)
